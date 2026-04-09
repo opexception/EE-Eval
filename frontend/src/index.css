@@ -1,0 +1,167 @@
+:root {
+  color: #1d2430;
+  background:
+    radial-gradient(circle at top, rgba(226, 196, 136, 0.4), transparent 30%),
+    linear-gradient(180deg, #f7f3ea 0%, #eef2f4 100%);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page-shell {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.hero {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
+  align-items: stretch;
+  max-width: 70rem;
+  margin: 0 auto;
+}
+
+.hero-copy,
+.panel,
+.note-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(29, 36, 48, 0.08);
+  border-radius: 1.5rem;
+  box-shadow: 0 24px 60px rgba(29, 36, 48, 0.08);
+}
+
+.hero-copy {
+  padding: 2.5rem;
+}
+
+.eyebrow {
+  margin: 0 0 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.8rem;
+  color: #8a5b2b;
+}
+
+.hero-copy h1 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", serif;
+  font-size: clamp(2.75rem, 6vw, 4.6rem);
+  line-height: 0.95;
+  color: #24303b;
+}
+
+.lede {
+  max-width: 38rem;
+  margin: 1.25rem 0 0;
+  font-size: 1.1rem;
+  color: #43505b;
+}
+
+.button-link {
+  display: inline-flex;
+  margin-top: 1.75rem;
+  padding: 0.9rem 1.2rem;
+  border-radius: 999px;
+  background: #24303b;
+  color: #f8f4ed;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.button-link:hover {
+  background: #182028;
+}
+
+.panel {
+  padding: 2rem;
+}
+
+.panel h2,
+.note-card h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.stack-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.stack-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid rgba(29, 36, 48, 0.08);
+}
+
+.stack-list li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.stack-list span {
+  color: #5a6672;
+}
+
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  max-width: 70rem;
+  margin: 1.5rem auto 0;
+}
+
+.note-card {
+  padding: 1.75rem;
+}
+
+.note-card p {
+  margin-bottom: 0;
+  color: #43505b;
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .notes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-shell {
+    padding: 1rem;
+  }
+
+  .hero-copy,
+  .panel,
+  .note-card {
+    padding: 1.5rem;
+  }
+}
+
