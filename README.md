@@ -1,46 +1,121 @@
 # EE-Eval
-A tool to help managers evaluate employees better. Based on the 9-box concept.
 
+EE-Eval is an internal web application for sensitive employee evaluation workflows, including 9-box-related processes and year-round performance tracking.
+
+The repository currently includes:
+
+- monorepo project skeleton
+- FastAPI backend
+- React + TypeScript + Vite frontend
+- PostgreSQL service in Docker Compose
+- backend configuration and database foundation
+- Alembic migration tooling
+- backend health and readiness endpoints
+- frontend landing page
+
+No business features are implemented yet.
 
 Copyright (C) 2026 Robert Maracle
 
-## Overview
+## Repository layout
 
-EE-Eval is a tool developed by Robert Maracle and released as open source software under the GNU Affero General Public License v3.0 (AGPL-3.0).
+```text
+backend/   FastAPI application and backend tests
+frontend/  React + TypeScript + Vite application
+docs/      product, security, and roadmap documentation
+```
 
-The goal of this project is to provide a useful tool that others can use, study, modify, and improve under the terms of the AGPL-3.0 license.
+## Prerequisites
+
+- Docker
+- Docker Compose
+
+## Quick start
+
+1. Optional: copy the root environment example if you want to change ports or local defaults.
+
+```bash
+cp .env.example .env
+```
+
+2. Build and start the project.
+
+```bash
+docker compose up --build
+```
+
+3. Apply the backend migrations.
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+4. Open the frontend landing page.
+
+```text
+http://localhost:5173
+```
+
+5. Check the backend liveness endpoint.
+
+```text
+http://localhost:8000/api/health
+```
+
+6. Check the backend readiness endpoint.
+
+```text
+http://localhost:8000/api/health/ready
+```
+
+7. Stop the stack when you are done.
+
+```bash
+docker compose down
+```
+
+If you want to remove the local PostgreSQL data volume too:
+
+```bash
+docker compose down -v
+```
+
+## Local services
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:8000`
+- Backend liveness endpoint: `http://localhost:8000/api/health`
+- Backend readiness endpoint: `http://localhost:8000/api/health/ready`
+- PostgreSQL: `localhost:5432`
+
+## Environment files
+
+- Root `.env.example` contains Docker Compose defaults for ports and local service settings.
+- [`backend/.env.example`](./backend/.env.example) contains backend application placeholders.
+- [`frontend/.env.example`](./frontend/.env.example) contains frontend application placeholders.
+
+Only placeholder values are committed. Do not commit real secrets or real employee data.
+
+## Current scope
+
+This scaffold intentionally keeps the implementation simple:
+
+- The backend now includes typed configuration, SQLAlchemy session management, and Alembic migration tooling.
+- The initial migration creates a `demo_records` table as a scaffold-only placeholder so database and migration wiring can be verified without introducing real HR data models yet.
+- Authentication, authorization, and business workflows are still deferred to later roadmap phases.
+- The liveness endpoint stays minimal, while the readiness endpoint only reports database availability.
 
 ## License
 
-This project is licensed under the **GNU Affero General Public License v3.0**. See the [LICENSE](./LICENSE) file for the full license text.
-
-In practical terms, this means:
-
-- You may use, study, modify, and redistribute this software.
-- If you distribute modified versions, they must also remain under AGPL-3.0.
-- If you run a modified version of this software for users over a network, you must also make the corresponding source code available to those users, as required by the AGPL-3.0.
-
-This software is provided **without warranty** and **without liability**, to the maximum extent permitted by law. See the LICENSE file for details.
+This project is licensed under the **GNU Affero General Public License v3.0**. See [LICENSE](./LICENSE) for the full license text.
 
 ## Contributions
 
-By contributing to this repository, you agree that your contribution is provided under the same AGPL-3.0 license as the project.
-
-In addition, as a condition of contribution, you agree that Robert Maracle may use, relicense, and distribute your contribution as part of this project or future versions of it under any license, including proprietary or closed-source licenses.
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
-
-## Status
-
-This project is in early development.
-
-## Getting Started
-
-Instructions for setup and usage will be added here.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution terms and project expectations.
 
 ## Contact
 
-For questions about licensing, contributions, or commercial arrangements, contact:
+For questions about licensing, contributions, or commercial arrangements:
 
 - Robert Maracle
 - robert.maracle@proton.me

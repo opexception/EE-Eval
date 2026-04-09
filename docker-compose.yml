@@ -1,0 +1,54 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      EE_EVAL_APP_NAME: ${EE_EVAL_APP_NAME:-EE-Eval API}
+      EE_EVAL_ENV: ${EE_EVAL_ENV:-development}
+      EE_EVAL_DEBUG: ${EE_EVAL_DEBUG:-true}
+      EE_EVAL_API_PREFIX: ${EE_EVAL_API_PREFIX:-/api}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-ee_eval}
+      DATABASE_USER: ${POSTGRES_USER:-ee_eval}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      DATABASE_ECHO: ${DATABASE_ECHO:-false}
+      DATABASE_POOL_PRE_PING: ${DATABASE_POOL_PRE_PING:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      VITE_APP_NAME: ${VITE_APP_NAME:-EE-Eval}
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ee_eval}
+      POSTGRES_USER: ${POSTGRES_USER:-ee_eval}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-ee_eval} -d ${POSTGRES_DB:-ee_eval}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
