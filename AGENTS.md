@@ -1,9 +1,10 @@
-# EE-Eval Agent Instructions
+# AGENTS.md
 
-## Project purpose
-EE-Eval is an internal web application for HR and management to support employee evaluation workflows using a 9-box framework and related performance-review processes.
+## Project identity
+EE-Eval is an internal web application for HR and management to support employee evaluation workflows, including a 9-box framework and related performance review processes.
 
-The application should prioritize:
+This project handles sensitive HR information. Priorities are:
+
 - clarity
 - fairness
 - auditability
@@ -11,97 +12,45 @@ The application should prioritize:
 - maintainability
 - simple, readable implementation
 
-## Primary tech stack
-Use these defaults unless the user explicitly instructs otherwise:
-- Backend: Python + FastAPI
+This repository should be developed in a beginner-friendly way that can still evolve toward enterprise-standard practices later.
+
+---
+
+## Primary technology defaults
+Unless explicitly directed otherwise, prefer the following stack:
+
+- Backend: FastAPI
 - Frontend: React + TypeScript + Vite
 - Database: PostgreSQL
 - Containerization: Docker + Docker Compose
-- Backend testing: pytest
-- Frontend testing: Vitest + React Testing Library
+- Backend tests: pytest
+- Frontend tests: Vitest + React Testing Library
 
-## General coding principles
-- Favor simple, readable code over clever code.
-- Keep functions, modules, and components small and understandable.
-- Prefer explicit names over abbreviations.
-- Make incremental, low-risk changes.
-- Do not introduce unnecessary frameworks or abstractions.
-- Do not rewrite working code without a clear reason.
+If proposing changes to this stack, explain why clearly before making them.
+
+---
 
 ## Architecture guidance
-- Keep backend and frontend in separate top-level directories: `backend/` and `frontend/`.
-- Keep business rules in backend services, not frontend components.
-- Keep API route handlers thin.
-- Keep database access organized and separate from request handlers where practical.
-- Use REST APIs unless explicitly asked otherwise.
-- Validate important inputs server-side.
+Use a simple monorepo layout with separate backend and frontend applications.
 
-## Product context
-This is an internal HR and management tool.
-Expected users may include:
-- HR administrators
-- executives or senior leadership
-- people managers
-- other authorized management roles
+Expected top-level structure:
 
-The permissions model must reflect role-based access to sensitive employee information.
+- `backend/`
+- `frontend/`
+- `docs/`
 
-## Authentication and authorization
-- Build with support for locally managed users first.
-- Design the auth layer so LDAP integration can be added later without major rework.
-- Future SSO support may be added later; avoid decisions that would make that difficult.
-- Authentication and authorization are separate concerns; implement both.
+General rules:
 
-## Security and privacy
-This project handles highly sensitive employee data, potentially including:
-- historical performance data
-- performance improvement plan documentation
-- promotion recommendations
-- manager notes and rationale
+- Keep business logic in backend service layers, not inside route handlers.
+- Keep API handlers thin and readable.
+- Prefer REST APIs unless explicitly asked to do otherwise.
+- Validate important inputs server-side even if the frontend also validates them.
+- Prefer simple, explicit code over abstraction-heavy patterns.
+- Use clear module boundaries and predictable file names.
+- Do not introduce unnecessary architectural complexity early.
 
-Therefore:
-- do not hardcode secrets
-- use environment variables for credentials and configuration
-- do not use real employee data in development or tests
-- avoid logging sensitive performance content unless explicitly required
-- minimize exposure of stack traces and internal errors
-- apply least-privilege defaults
-- maintain auditability for sensitive actions where practical
-- flag privacy or security concerns in responses when relevant
+Avoid unless explicitly requested:
 
-## Database and migrations
-- Use PostgreSQL.
-- Use a migration tool appropriate for the backend stack.
-- Do not change schema without updating migrations.
-- Seed data must be clearly fake and safe for development.
-
-## Containers and local development
-- The project must run locally with Docker Compose.
-- Prefer one service for backend, one for frontend, and one for postgres.
-- Keep local setup beginner-friendly and predictable.
-- Document copy-pasteable startup commands in README.
-- Avoid requiring local dependencies when Docker can provide them.
-
-## Testing and validation
-When making code changes:
-- run relevant tests
-- run linting/formatting if configured
-- make a best effort to verify the app starts successfully
-- clearly state when checks could not be run
-
-## Documentation expectations
-- Keep README accurate.
-- Update docs when behavior, setup, auth, env vars, or workflows change.
-- Use markdown docs under `docs/` for product requirements, permissions, security, and roadmap details.
-- Do not overload this file with full product requirements.
-
-## Change management
-- Before large changes, propose a short plan.
-- For multi-step work, implement in small verifiable increments.
-- Keep changes focused and cohesive.
-- Do not mix unrelated refactors with feature work.
-
-## What to avoid unless explicitly requested
 - Kubernetes
 - microservices
 - GraphQL
@@ -109,11 +58,169 @@ When making code changes:
 - premature optimization
 - enterprise-only patterns that significantly reduce beginner readability
 
-## Preferred first milestones
-1. Scaffold backend, frontend, and docker-compose
-2. Add health checks and basic landing page
-3. Add database models and migrations
-4. Add local authentication and role model
-5. Add initial employee evaluation workflow
-6. Add 9-box visualization/reporting
-7. Prepare architecture for LDAP integration
+---
+
+## Product context
+Expected users include, at minimum:
+
+- HR administrators
+- executives or senior leadership
+- people managers
+- other authorized management roles
+
+The permissions model must reflect role-based access to sensitive employee information.
+
+This project may eventually be adapted into a SaaS product, but that is not required for v1. Do not add major multi-tenant complexity unless requested. It is acceptable to keep future SaaS expansion in mind when making naming and layering decisions.
+
+---
+
+## Authentication and authorization guidance
+Authentication is highly desired.
+
+Initial auth direction:
+
+- start with locally managed users
+- design the auth layer so LDAP can be added later without major rework
+- future SSO may be added later
+
+Rules:
+
+- treat authentication and authorization as separate concerns
+- prefer a clear role-based authorization model
+- default to least privilege
+- do not assume broad data visibility unless documentation explicitly says so
+
+---
+
+## Security and privacy rules
+Because this application may contain highly sensitive HR data, use conservative defaults.
+
+Required practices:
+
+- never hardcode secrets
+- use environment variables for secrets and configuration
+- do not commit real employee data
+- use only fake or clearly synthetic seed/test/demo data
+- avoid logging sensitive review content, PIP content, promotion rationale, or manager notes unless explicitly required
+- minimize exposure of stack traces and internal implementation details in user-facing error responses
+- prefer secure defaults for session handling, auth flows, and data access
+- maintain auditability where practical
+- keep access to sensitive records narrowly scoped
+
+If a proposed change may affect confidentiality, integrity, auditability, or authorization boundaries, call that out clearly.
+
+---
+
+## Database and migrations
+Use PostgreSQL as the default database.
+
+Rules:
+
+- use a migration tool for schema changes
+- do not change schema without updating migrations
+- keep schema readable and well named
+- avoid stuffing too much business logic into the database early
+- seed only fake data for development
+
+---
+
+## Containers and local development
+The project must run locally using Docker Compose.
+
+Preferred baseline local setup:
+
+- backend service
+- frontend service
+- postgres service
+
+Goals for local setup:
+
+- predictable
+- beginner-friendly
+- copy-pasteable startup instructions
+- easy to reset and rebuild
+
+README instructions should remain accurate.
+
+---
+
+## Code quality expectations
+When making changes:
+
+- keep code readable and explicit
+- prefer small, reviewable changes
+- avoid large unrelated refactors
+- keep naming consistent
+- add comments where they genuinely improve understanding
+- do not add cleverness at the expense of maintainability
+
+Use formatting and linting tools if configured.
+
+---
+
+## Testing expectations
+For meaningful changes:
+
+- add or update relevant tests
+- run relevant backend tests if backend changes were made
+- run relevant frontend tests if frontend changes were made
+- run linting/formatting checks if configured
+- make a best effort to verify the app starts successfully
+
+If you could not run a check, say so explicitly.
+
+Do not claim code is working unless it was actually verified.
+
+---
+
+## Documentation expectations
+Keep documentation aligned with implementation.
+
+Rules:
+
+- update `README.md` when setup or run instructions change
+- update docs in `docs/` when requirements, auth, roles, security assumptions, or workflows change
+- do not overload `AGENTS.md` with full product requirements
+- keep product requirements in dedicated documents under `docs/`
+
+Important docs include:
+
+- `docs/requirements.md`
+- `docs/roles-and-permissions.md`
+- `docs/security-and-privacy.md`
+- `docs/roadmap.md`
+
+---
+
+## Change management expectations
+Prefer staged delivery.
+
+Default implementation order:
+
+1. scaffold backend, frontend, and docker-compose
+2. add health checks and a basic landing page
+3. add database models and migrations
+4. add local authentication and role model
+5. add initial employee evaluation workflow
+6. add 9-box visualization and reporting
+7. prepare architecture for LDAP integration
+
+For each major step:
+
+- explain what will be changed
+- keep the change focused
+- update docs if behavior or setup changes
+- note assumptions when requirements are incomplete
+
+---
+
+## Working style for Codex
+Before implementing a major feature:
+
+1. read `AGENTS.md`
+2. read the relevant docs under `docs/`
+3. summarize assumptions if requirements are still ambiguous
+4. implement only the requested slice
+5. keep output aligned with this file
+
+If requirements are missing, prefer a minimal, conservative implementation that preserves future flexibility without adding unnecessary complexity.
