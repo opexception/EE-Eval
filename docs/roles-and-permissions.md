@@ -204,3 +204,15 @@ Suggested approach:
 - all authorization enforced in backend services and API layer
 
 Avoid overly abstract permission engines in v1 unless requirements clearly justify them.
+
+---
+
+## Current first-pass implementation
+As of the first local-authentication pass:
+
+- locally managed users authenticate against backend database records
+- supported role names are `employee`, `people_manager`, `upper_manager`, `executive`, `hr_admin`, and `system_admin`
+- users can hold multiple roles through a join table, even though the seeded demo users currently have one role each
+- backend authorization scaffolding is implemented as explicit server-side role-check dependencies
+- org-scope rules, field-level visibility rules, and workflow-specific permissions are not implemented yet
+- system administration remains separate from HR content access at the role-model level, even though business endpoints are not in place yet

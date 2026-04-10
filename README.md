@@ -8,10 +8,10 @@ The repository currently includes:
 - FastAPI backend
 - React + TypeScript + Vite frontend
 - PostgreSQL service in Docker Compose
-- backend configuration and database foundation
+- backend configuration, database foundation, and local authentication
 - Alembic migration tooling
-- backend health and readiness endpoints
-- frontend landing page
+- backend health, readiness, login, and current-user endpoints
+- frontend login page and authenticated shell
 
 No business features are implemented yet.
 
@@ -50,25 +50,33 @@ docker compose up --build
 docker compose exec backend alembic upgrade head
 ```
 
-4. Open the frontend landing page.
+4. Seed the fake demo users for development.
+
+```bash
+docker compose exec backend python -m app.scripts.seed_demo_users
+```
+
+5. Open the frontend login page.
 
 ```text
 http://localhost:5173
 ```
 
-5. Check the backend liveness endpoint.
+6. Sign in with one of the seeded demo users listed below.
+
+7. Check the backend liveness endpoint.
 
 ```text
 http://localhost:8000/api/health
 ```
 
-6. Check the backend readiness endpoint.
+8. Check the backend readiness endpoint.
 
 ```text
 http://localhost:8000/api/health/ready
 ```
 
-7. Stop the stack when you are done.
+9. Stop the stack when you are done.
 
 ```bash
 docker compose down
@@ -86,6 +94,8 @@ docker compose down -v
 - Backend: `http://localhost:8000`
 - Backend liveness endpoint: `http://localhost:8000/api/health`
 - Backend readiness endpoint: `http://localhost:8000/api/health/ready`
+- Backend login endpoint: `http://localhost:8000/api/auth/login`
+- Backend current-user endpoint: `http://localhost:8000/api/auth/me`
 - PostgreSQL: `localhost:5432`
 
 ## Environment files
@@ -96,14 +106,49 @@ docker compose down -v
 
 Only placeholder values are committed. Do not commit real secrets or real employee data.
 
+## Auth-related environment variables
+
+The main auth settings are:
+
+- `EE_EVAL_CORS_ORIGINS`: allowed frontend origins for browser access to the backend
+- `EE_EVAL_JWT_SECRET`: signing key for backend access tokens
+- `EE_EVAL_ACCESS_TOKEN_EXPIRE_MINUTES`: access token lifetime in minutes
+- `EE_EVAL_MAX_FAILED_LOGIN_ATTEMPTS`: failed local login attempts before lockout
+- `EE_EVAL_LOCKOUT_MINUTES`: temporary lockout length after repeated failed logins
+- `EE_EVAL_SEED_DEMO_USERS`: enables the development-only demo seed command
+- `EE_EVAL_DEMO_PASSWORD`: shared password assigned to the seeded fake users
+- `VITE_API_BASE_URL`: frontend API base URL used by the browser
+
+## Seeded demo credentials
+
+The seed command creates fake users only. These are for local development and demos.
+
+Shared demo password:
+
+```text
+DemoPass123!ChangeMe
+```
+
+Seeded users:
+
+| Username | Role |
+| --- | --- |
+| `employee.taylor` | `employee` |
+| `manager.avery` | `people_manager` |
+| `upper.lee` | `upper_manager` |
+| `executive.morgan` | `executive` |
+| `hr.harper` | `hr_admin` |
+| `it.rowan` | `system_admin` |
+
 ## Current scope
 
 This scaffold intentionally keeps the implementation simple:
 
-- The backend now includes typed configuration, SQLAlchemy session management, and Alembic migration tooling.
-- The initial migration creates a `demo_records` table as a scaffold-only placeholder so database and migration wiring can be verified without introducing real HR data models yet.
-- Authentication, authorization, and business workflows are still deferred to later roadmap phases.
-- The liveness endpoint stays minimal, while the readiness endpoint only reports database availability.
+- The backend now includes typed configuration, SQLAlchemy session management, Alembic migration tooling, local users, role assignments, and role-check dependencies.
+- Passwords are stored as Argon2 hashes, and local login attempts lock temporarily after repeated failures.
+- Demo users are seeded only in development and use fake names and a documented fake password.
+- The frontend keeps the access token in memory only for this first pass, so refreshing the page signs you out.
+- Business workflows, LDAP integration, password reset, and broader authorization rules are still deferred to later phases.
 
 ## License
 

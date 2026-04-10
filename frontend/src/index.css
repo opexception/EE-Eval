@@ -82,6 +82,8 @@ a {
 
 .button-link {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-top: 1.75rem;
   padding: 0.9rem 1.2rem;
   border-radius: 999px;
@@ -89,10 +91,58 @@ a {
   color: #f8f4ed;
   text-decoration: none;
   font-weight: 600;
+  border: 0;
+  cursor: pointer;
 }
 
 .button-link:hover {
   background: #182028;
+}
+
+.button-link:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.ghost-button,
+.submit-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.9rem 1.2rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ghost-button {
+  background: rgba(36, 48, 59, 0.08);
+  color: #24303b;
+}
+
+.submit-button {
+  background: #8a5b2b;
+  color: #fffaf2;
+  font-weight: 600;
+}
+
+.ghost-button:hover {
+  background: rgba(36, 48, 59, 0.13);
+}
+
+.submit-button:hover {
+  background: #724a21;
+}
+
+.ghost-button:disabled,
+.submit-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .panel {
@@ -131,9 +181,101 @@ a {
   color: #5a6672;
 }
 
+.login-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field span,
+.details-list dt {
+  color: #5a6672;
+  font-size: 0.95rem;
+}
+
+.field input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(29, 36, 48, 0.15);
+  background: rgba(255, 255, 255, 0.92);
+  color: #1d2430;
+  font: inherit;
+}
+
+.field input:focus {
+  outline: 2px solid rgba(138, 91, 43, 0.25);
+  border-color: #8a5b2b;
+}
+
+.supporting-text,
+.api-line,
+.details-list dd {
+  color: #43505b;
+}
+
+.supporting-text {
+  margin-bottom: 0;
+}
+
+.error-text {
+  margin: 0;
+  color: #8a2b2b;
+  font-weight: 600;
+}
+
+.shell-layout {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
+  max-width: 70rem;
+  margin: 0 auto;
+}
+
+.details-list {
+  margin: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.details-list div {
+  display: grid;
+  gap: 0.2rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid rgba(29, 36, 48, 0.08);
+}
+
+.details-list div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.details-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.role-pill {
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(138, 91, 43, 0.12);
+  color: #6f451f;
+  font-weight: 600;
+}
+
 .notes-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.5rem;
   max-width: 70rem;
   margin: 1.5rem auto 0;
@@ -150,6 +292,7 @@ a {
 
 @media (max-width: 900px) {
   .hero,
+  .shell-layout,
   .notes-grid {
     grid-template-columns: 1fr;
   }
@@ -164,4 +307,3 @@ a {
     padding: 1.5rem;
   }
 }
-

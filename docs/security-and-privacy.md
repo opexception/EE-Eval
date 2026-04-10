@@ -90,6 +90,25 @@ The authorization model should:
 
 ---
 
+## Current first-pass auth implementation
+The current local-authentication slice includes:
+
+- locally managed user accounts stored in PostgreSQL
+- Argon2 password hashing for stored local passwords
+- signed bearer access tokens using an environment-provided secret
+- a protected current-user endpoint resolved server-side from the token
+- role-check dependencies in the backend for future protected routes
+- temporary local-account lockout after repeated failed login attempts
+- development-only fake user seeding with synthetic names and demo-safe credentials
+
+Current frontend behavior:
+
+- the access token is kept in memory only for the current page session
+- refreshing the browser signs the user out
+- no token is written to local storage in this first pass
+
+---
+
 ## Database and storage considerations
 - use PostgreSQL
 - use migrations for schema evolution

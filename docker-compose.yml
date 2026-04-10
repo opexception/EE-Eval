@@ -7,6 +7,13 @@ services:
       EE_EVAL_ENV: ${EE_EVAL_ENV:-development}
       EE_EVAL_DEBUG: ${EE_EVAL_DEBUG:-true}
       EE_EVAL_API_PREFIX: ${EE_EVAL_API_PREFIX:-/api}
+      EE_EVAL_CORS_ORIGINS: ${EE_EVAL_CORS_ORIGINS:-http://localhost:5173}
+      EE_EVAL_JWT_SECRET: ${EE_EVAL_JWT_SECRET:-replace-with-a-local-development-secret}
+      EE_EVAL_ACCESS_TOKEN_EXPIRE_MINUTES: ${EE_EVAL_ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      EE_EVAL_MAX_FAILED_LOGIN_ATTEMPTS: ${EE_EVAL_MAX_FAILED_LOGIN_ATTEMPTS:-5}
+      EE_EVAL_LOCKOUT_MINUTES: ${EE_EVAL_LOCKOUT_MINUTES:-15}
+      EE_EVAL_SEED_DEMO_USERS: ${EE_EVAL_SEED_DEMO_USERS:-true}
+      EE_EVAL_DEMO_PASSWORD: ${EE_EVAL_DEMO_PASSWORD:-DemoPass123!ChangeMe}
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
       DATABASE_NAME: ${POSTGRES_DB:-ee_eval}
@@ -25,6 +32,7 @@ services:
       context: ./frontend
     environment:
       VITE_APP_NAME: ${VITE_APP_NAME:-EE-Eval}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api}
     depends_on:
       - backend
     ports:
