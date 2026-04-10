@@ -50,6 +50,11 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    employee_profile = relationship(
+        "Employee",
+        back_populates="user",
+        uselist=False,
+    )
 
     @property
     def role_names(self) -> set[str]:
@@ -65,4 +70,3 @@ class User(Base):
 
         current_time = now or datetime.now(UTC)
         return self.locked_until > current_time
-

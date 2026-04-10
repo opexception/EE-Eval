@@ -216,3 +216,15 @@ As of the first local-authentication pass:
 - backend authorization scaffolding is implemented as explicit server-side role-check dependencies
 - org-scope rules, field-level visibility rules, and workflow-specific permissions are not implemented yet
 - system administration remains separate from HR content access at the role-model level, even though business endpoints are not in place yet
+
+As of the first employee/review CRUD foundation pass:
+
+- employee visibility is enforced server-side using the employee-manager hierarchy
+- employees can read only their own employee profile in this first pass
+- people managers can read employees in their full reporting chain and can create, update, and archive evaluations for that reporting chain
+- upper managers can read employees and evaluations in their full reporting chain but do not edit evaluations yet
+- executives can read employee and evaluation summaries across the organization but do not edit these records yet
+- HR administrators can create, update, and archive employee profiles and review cycles, and can fully manage evaluations
+- system administrators still do not automatically receive HR-content access
+- employee profile management is HR-only in this slice, even if later workflow phases allow broader delegated administration
+- employee access to evaluations is intentionally deferred until published/shared visibility rules are better defined

@@ -107,6 +107,22 @@ Current frontend behavior:
 - refreshing the browser signs the user out
 - no token is written to local storage in this first pass
 
+## Current employee/review data foundation
+The current CRUD foundation for employees, review cycles, and evaluations adds:
+
+- server-side authorization checks in backend services for employee scope and role checks
+- a simple employee hierarchy model used to restrict manager and upper-manager visibility
+- review cycle and evaluation records with summary-safe fields only in this first pass
+- one evaluation record per employee per review cycle in this initial foundation, updated in place until richer workflow/versioning is added
+- development-only fake seed data for employees, review cycles, and evaluations
+- archive-style delete behavior instead of hard deletes for these records
+
+Current conservative assumptions:
+
+- employees can read their own employee profile, but they do not receive evaluation-record access yet
+- executives are read-only in this slice and the evaluation fields are intentionally limited to summary-safe values
+- system administrators do not automatically gain access to employee or evaluation records
+
 ---
 
 ## Database and storage considerations

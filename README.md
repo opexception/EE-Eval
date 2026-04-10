@@ -101,7 +101,7 @@ docker compose up --build
 docker compose exec backend alembic upgrade head
 ```
 
-4. Seed the fake demo users for development.
+4. Seed the fake demo users and fake review data for development.
 
 ```bash
 docker compose exec backend python -m app.scripts.seed_demo_users
@@ -147,6 +147,9 @@ docker compose down -v
 - Backend readiness endpoint: `http://localhost:8000/api/health/ready`
 - Backend login endpoint: `http://localhost:8000/api/auth/login`
 - Backend current-user endpoint: `http://localhost:8000/api/auth/me`
+- Backend employees endpoint: `http://localhost:8000/api/employees`
+- Backend review cycles endpoint: `http://localhost:8000/api/review-cycles`
+- Backend evaluations endpoint: `http://localhost:8000/api/evaluations`
 - PostgreSQL: `localhost:5432`
 
 ## Environment files
@@ -172,7 +175,8 @@ The main auth settings are:
 
 ## Seeded demo credentials
 
-The seed command creates fake users only. These are for local development and demos.
+The seed command creates fake users plus fake employees, review cycles, and evaluations.
+These records are for local development and demos only.
 
 Shared demo password:
 
@@ -195,11 +199,16 @@ Seeded users:
 
 This scaffold intentionally keeps the implementation simple:
 
-- The backend now includes typed configuration, SQLAlchemy session management, Alembic migration tooling, local users, role assignments, and role-check dependencies.
+- The backend now includes typed configuration, SQLAlchemy session management, Alembic migration tooling, local users, role assignments, employee profiles, review cycles, evaluations, and role-check dependencies.
 - Passwords are stored as Argon2 hashes, and local login attempts lock temporarily after repeated failures.
-- Demo users are seeded only in development and use fake names and a documented fake password.
+- Employee profiles and review-cycle records use simple, summary-safe fields only in this first pass.
+- Each employee currently has one evaluation record per review cycle, which is updated over time instead of versioned.
+- Demo users and review data are seeded only in development and use fake names and a documented fake password.
+- `DELETE` endpoints archive employees, review cycles, and evaluations instead of hard-deleting database rows.
 - The frontend keeps the access token in memory only for this first pass, so refreshing the page signs you out.
-- Business workflows, LDAP integration, password reset, and broader authorization rules are still deferred to later phases.
+- HR administrators can manage employees and review cycles, people managers can manage evaluations for their reporting line, upper managers are read-only for their reporting line, and executives are read-only at the summary level.
+- Employee access to evaluation records is intentionally deferred until published/shared visibility rules are designed more fully.
+- Business workflows, LDAP integration, password reset, attachments, and broader authorization rules are still deferred to later phases.
 
 ## License
 
