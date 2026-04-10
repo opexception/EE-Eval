@@ -1,9 +1,653 @@
-import { FormEvent, startTransition, useState } from "react";
+import { FormEvent, startTransition, useEffect, useState } from "react";
 
-import { API_BASE_URL, ApiError, getCurrentUser, login, type CurrentUser } from "./api";
+import {
+  API_BASE_URL,
+  ApiError,
+  createEvaluation,
+  getCurrentUser,
+  getEmployees,
+  getEvaluations,
+  getReviewCycles,
+  login,
+  updateEvaluation,
+  type CurrentUser,
+  type Employee,
+  type Evaluation,
+  type ReviewCycle,
+} from "./api";
 import "./index.css";
 
 const appName = import.meta.env.VITE_APP_NAME ?? "EE-Eval";
+
+type DraftState = {
+  performanceRating: string;
+  potentialRating: string;
+  summaryComment: string;
+};
+
+function createEmptyDraft(): DraftState {
+  return {
+    performanceRating: "",
+    potentialRating: "2",
+    summaryComment: "",
+  };
+}
+
+function createDraftFromEvaluation(evaluation: Evaluation): DraftState {
+  return {
+    performanceRating: evaluation.performance_rating.toFixed(2),
+    potentialRating: String(evaluation.potential_rating),
+    summaryComment: evaluation.summary_comment ?? "",
+  };
+}
+
+function isManagerWorkflowUser(currentUser: CurrentUser): boolean {
+  return currentUser.roles.includes("people_manager") || currentUser.roles.includes("hr_admin");
+}
+
+function formatRole(role: string): string {
+  return role
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function findPreferredReviewCycle(reviewCycles: ReviewCycle[]): ReviewCycle | null {
+  return reviewCycles.find((reviewCycle) => reviewCycle.status === "active") ?? reviewCycles[0] ?? null;
+}
+
+function compareEvaluationsByCycleName(a: Evaluation, b: Evaluation): number {
+  return a.review_cycle_name.localeCompare(b.review_cycle_name) * -1;
+}
+
+type AuthenticatedShellProps = {
+  currentUser: CurrentUser;
+  isRefreshing: boolean;
+  onRefreshCurrentUser: () => Promise<void>;
+  onSignOut: () => void;
+};
+
+function AuthenticatedShell({
+  currentUser,
+  isRefreshing,
+  onRefreshCurrentUser,
+  onSignOut,
+}: AuthenticatedShellProps) {
+  return (
+    <div className="page-shell">
+      <main className="shell-layout">
+        <section className="hero-copy">
+          <p className="eyebrow">Authenticated Shell</p>
+          <h1>{appName}</h1>
+          <p className="lede">
+            This account is signed in successfully. The first end-to-end workflow
+            is currently focused on people managers and HR administrators.
+          </p>
+          <div className="button-row">
+            <button
+              className="button-link"
+              type="button"
+              onClick={onRefreshCurrentUser}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? "Refreshing..." : "Refresh current user"}
+            </button>
+            <button className="ghost-button" type="button" onClick={onSignOut}>
+              Sign out
+            </button>
+          </div>
+        </section>
+
+        <section className="panel">
+          <h2>Signed in as</h2>
+          <dl className="details-list">
+            <div>
+              <dt>Name</dt>
+              <dd>{currentUser.full_name}</dd>
+            </div>
+            <div>
+              <dt>Username</dt>
+              <dd>{currentUser.username}</dd>
+            </div>
+            <div>
+              <dt>Auth provider</dt>
+              <dd>{currentUser.auth_provider}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{currentUser.is_active ? "Active" : "Inactive"}</dd>
+            </div>
+          </dl>
+          <h2>Roles</h2>
+          <div className="role-list" aria-label="Assigned roles">
+            {currentUser.roles.map((role) => (
+              <span className="role-pill" key={role}>
+                {formatRole(role)}
+              </span>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      <section className="notes-grid" aria-label="Authenticated notes">
+        <article className="note-card">
+          <h2>Included right now</h2>
+          <p>
+            Local sign-in, employee directory access, review-cycle lookup, and
+            evaluation CRUD foundations are active in the backend.
+          </p>
+        </article>
+
+        <article className="note-card">
+          <h2>Manager workflow</h2>
+          <p>
+            Sign in with `manager.avery` to use the first end-to-end manager
+            workflow for draft evaluations.
+          </p>
+        </article>
+
+        <article className="note-card">
+          <h2>Backend endpoints</h2>
+          <p className="api-line">{API_BASE_URL}/employees</p>
+          <p className="api-line">{API_BASE_URL}/review-cycles</p>
+          <p className="api-line">{API_BASE_URL}/evaluations</p>
+        </article>
+      </section>
+    </div>
+  );
+}
+
+type ManagerWorkspaceProps = {
+  currentUser: CurrentUser;
+  token: string;
+  isRefreshing: boolean;
+  onRefreshCurrentUser: () => Promise<void>;
+  onSessionError: (message: string) => void;
+  onSignOut: () => void;
+};
+
+function ManagerWorkspace({
+  currentUser,
+  token,
+  isRefreshing,
+  onRefreshCurrentUser,
+  onSessionError,
+  onSignOut,
+}: ManagerWorkspaceProps) {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [reviewCycles, setReviewCycles] = useState<ReviewCycle[]>([]);
+  const [employeeEvaluations, setEmployeeEvaluations] = useState<Evaluation[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
+  const [selectedReviewCycleId, setSelectedReviewCycleId] = useState<number | null>(null);
+  const [draft, setDraft] = useState<DraftState>(createEmptyDraft);
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [isLoadingWorkspace, setIsLoadingWorkspace] = useState(true);
+  const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadWorkspace() {
+      setWorkflowError(null);
+      setSaveMessage(null);
+      setIsLoadingWorkspace(true);
+
+      try {
+        const [employeeResponses, reviewCycleResponses] = await Promise.all([
+          getEmployees(token, { reportsOnly: true }),
+          getReviewCycles(token),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        const activeEmployees = employeeResponses.filter((employee) => employee.is_active);
+        const nextEmployees = activeEmployees.length > 0 ? activeEmployees : employeeResponses;
+        const preferredEmployee = nextEmployees[0] ?? null;
+        const preferredReviewCycle = findPreferredReviewCycle(reviewCycleResponses);
+
+        startTransition(() => {
+          setEmployees(nextEmployees);
+          setReviewCycles(reviewCycleResponses);
+          setSelectedEmployeeId(preferredEmployee?.id ?? null);
+          setSelectedReviewCycleId(preferredReviewCycle?.id ?? null);
+        });
+      } catch (error) {
+        const message =
+          error instanceof ApiError
+            ? error.message
+            : "Unable to load the manager workspace.";
+
+        if (error instanceof ApiError && error.status === 401) {
+          onSessionError(message);
+          return;
+        }
+
+        if (!isMounted) {
+          return;
+        }
+
+        setWorkflowError(message);
+      } finally {
+        if (isMounted) {
+          setIsLoadingWorkspace(false);
+        }
+      }
+    }
+
+    void loadWorkspace();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onSessionError, token]);
+
+  useEffect(() => {
+    if (!selectedEmployeeId) {
+      setEmployeeEvaluations([]);
+      setDraft(createEmptyDraft());
+      return;
+    }
+
+    const employeeId = selectedEmployeeId;
+    let isMounted = true;
+
+    async function loadEmployeeEvaluations() {
+      setWorkflowError(null);
+      setSaveMessage(null);
+      setIsLoadingEvaluations(true);
+
+      try {
+        const evaluations = await getEvaluations(token, {
+          employeeId,
+        });
+
+        if (!isMounted) {
+          return;
+        }
+
+        const sortedEvaluations = [...evaluations].sort(compareEvaluationsByCycleName);
+        startTransition(() => {
+          setEmployeeEvaluations(sortedEvaluations);
+        });
+      } catch (error) {
+        const message =
+          error instanceof ApiError
+            ? error.message
+            : "Unable to load evaluations for this employee.";
+
+        if (error instanceof ApiError && error.status === 401) {
+          onSessionError(message);
+          return;
+        }
+
+        if (!isMounted) {
+          return;
+        }
+
+        setWorkflowError(message);
+      } finally {
+        if (isMounted) {
+          setIsLoadingEvaluations(false);
+        }
+      }
+    }
+
+    void loadEmployeeEvaluations();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onSessionError, selectedEmployeeId, token]);
+
+  const selectedEmployee =
+    employees.find((employee) => employee.id === selectedEmployeeId) ?? null;
+  const selectedReviewCycle =
+    reviewCycles.find((reviewCycle) => reviewCycle.id === selectedReviewCycleId) ?? null;
+  const selectedEvaluation =
+    employeeEvaluations.find(
+      (evaluation) => evaluation.review_cycle_id === selectedReviewCycleId,
+    ) ?? null;
+
+  useEffect(() => {
+    if (!selectedEmployee || !selectedReviewCycle) {
+      setDraft(createEmptyDraft());
+      return;
+    }
+
+    if (selectedEvaluation) {
+      setDraft(createDraftFromEvaluation(selectedEvaluation));
+      return;
+    }
+
+    setDraft(createEmptyDraft());
+  }, [selectedEmployee, selectedEvaluation, selectedReviewCycle]);
+
+  const priorEvaluations = employeeEvaluations.filter(
+    (evaluation) => evaluation.review_cycle_id !== selectedReviewCycleId,
+  );
+
+  async function handleSaveDraft(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedEmployee || !selectedReviewCycle) {
+      setWorkflowError("Choose an employee and review cycle before saving.");
+      return;
+    }
+
+    const parsedPerformanceRating = Number.parseFloat(draft.performanceRating);
+    const parsedPotentialRating = Number.parseInt(draft.potentialRating, 10);
+
+    if (Number.isNaN(parsedPerformanceRating) || parsedPerformanceRating < 0 || parsedPerformanceRating > 5) {
+      setWorkflowError("Performance rating must be between 0.00 and 5.00.");
+      return;
+    }
+
+    if (Number.isNaN(parsedPotentialRating) || parsedPotentialRating < 1 || parsedPotentialRating > 3) {
+      setWorkflowError("Potential rating must be between 1 and 3.");
+      return;
+    }
+
+    setWorkflowError(null);
+    setSaveMessage(null);
+    setIsSaving(true);
+
+    try {
+      const request = {
+        performance_rating: parsedPerformanceRating,
+        potential_rating: parsedPotentialRating,
+        summary_comment: draft.summaryComment.trim() || null,
+        status: "draft",
+      };
+
+      const savedEvaluation = selectedEvaluation
+        ? await updateEvaluation(token, selectedEvaluation.id, request)
+        : await createEvaluation(token, {
+            employee_id: selectedEmployee.id,
+            review_cycle_id: selectedReviewCycle.id,
+            ...request,
+          });
+
+      startTransition(() => {
+        setEmployeeEvaluations((previousEvaluations) => {
+          const otherEvaluations = previousEvaluations.filter(
+            (evaluation) => evaluation.id !== savedEvaluation.id,
+          );
+          return [savedEvaluation, ...otherEvaluations].sort(compareEvaluationsByCycleName);
+        });
+      });
+      setSaveMessage(selectedEvaluation ? "Draft updated." : "Draft created.");
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Unable to save the evaluation draft.";
+
+      if (error instanceof ApiError && error.status === 401) {
+        onSessionError(message);
+        return;
+      }
+
+      setWorkflowError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="page-shell">
+      <main className="shell-layout">
+        <section className="hero-copy">
+          <p className="eyebrow">Manager Workflow</p>
+          <h1>{appName}</h1>
+          <p className="lede">
+            View the employees in your reporting line, open a draft evaluation,
+            and save structured ratings with simple narrative notes.
+          </p>
+          <div className="button-row">
+            <button
+              className="button-link"
+              type="button"
+              onClick={onRefreshCurrentUser}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? "Refreshing..." : "Refresh current user"}
+            </button>
+            <button className="ghost-button" type="button" onClick={onSignOut}>
+              Sign out
+            </button>
+          </div>
+        </section>
+
+        <section className="panel">
+          <h2>Signed in as</h2>
+          <dl className="details-list">
+            <div>
+              <dt>Name</dt>
+              <dd>{currentUser.full_name}</dd>
+            </div>
+            <div>
+              <dt>Username</dt>
+              <dd>{currentUser.username}</dd>
+            </div>
+            <div>
+              <dt>Roles</dt>
+              <dd>{currentUser.roles.map(formatRole).join(", ")}</dd>
+            </div>
+          </dl>
+          <p className="supporting-text">
+            The first pass keeps evaluations simple: one draft per employee per
+            review cycle, with explicit save actions and server-side permission
+            checks.
+          </p>
+        </section>
+      </main>
+
+      <section className="workflow-grid" aria-label="Manager evaluation workspace">
+        <section className="panel employee-panel">
+          <h2>Your employees</h2>
+          {isLoadingWorkspace ? (
+            <p className="supporting-text">Loading authorized employees...</p>
+          ) : employees.length === 0 ? (
+            <p className="supporting-text">
+              No report employees are available for this account yet.
+            </p>
+          ) : (
+            <div className="employee-list" role="list">
+              {employees.map((employee) => (
+                <button
+                  className={`employee-card${
+                    employee.id === selectedEmployeeId ? " employee-card-selected" : ""
+                  }`}
+                  key={employee.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedEmployeeId(employee.id);
+                    setSaveMessage(null);
+                    setWorkflowError(null);
+                  }}
+                >
+                  <span className="employee-card-name">{employee.full_name}</span>
+                  <span className="employee-card-meta">{employee.job_title}</span>
+                  <span className="employee-card-meta">{employee.department}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="panel editor-panel">
+          <div className="editor-header">
+            <div>
+              <h2>Draft evaluation</h2>
+              {selectedEmployee ? (
+                <p className="supporting-text">
+                  {selectedEmployee.full_name}
+                  {" · "}
+                  {selectedEmployee.job_title}
+                  {" · "}
+                  {selectedEmployee.department}
+                </p>
+              ) : (
+                <p className="supporting-text">
+                  Choose an employee from the left to begin.
+                </p>
+              )}
+            </div>
+
+            <label className="field compact-field">
+              <span>Review cycle</span>
+              <select
+                value={selectedReviewCycleId ?? ""}
+                onChange={(event) => {
+                  setSelectedReviewCycleId(Number.parseInt(event.target.value, 10));
+                  setSaveMessage(null);
+                  setWorkflowError(null);
+                }}
+                disabled={isLoadingWorkspace || reviewCycles.length === 0}
+              >
+                {reviewCycles.map((reviewCycle) => (
+                  <option key={reviewCycle.id} value={reviewCycle.id}>
+                    {reviewCycle.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {workflowError ? <p className="error-text">{workflowError}</p> : null}
+          {saveMessage ? <p className="success-text">{saveMessage}</p> : null}
+
+          {selectedEmployee && selectedReviewCycle ? (
+            <form className="evaluation-form" onSubmit={handleSaveDraft}>
+              <div className="field-grid">
+                <label className="field">
+                  <span>Performance rating (0.00 to 5.00)</span>
+                  <input
+                    name="performanceRating"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    max="5"
+                    step="0.01"
+                    value={draft.performanceRating}
+                    onChange={(event) => {
+                      setDraft((currentDraft) => ({
+                        ...currentDraft,
+                        performanceRating: event.target.value,
+                      }));
+                      setSaveMessage(null);
+                    }}
+                    placeholder="3.75"
+                    required
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Potential rating (1 to 3)</span>
+                  <select
+                    name="potentialRating"
+                    value={draft.potentialRating}
+                    onChange={(event) => {
+                      setDraft((currentDraft) => ({
+                        ...currentDraft,
+                        potentialRating: event.target.value,
+                      }));
+                      setSaveMessage(null);
+                    }}
+                  >
+                    <option value="1">1 · Lower potential right now</option>
+                    <option value="2">2 · Developing steadily</option>
+                    <option value="3">3 · Strong growth potential</option>
+                  </select>
+                </label>
+              </div>
+
+              <label className="field">
+                <span>Narrative notes</span>
+                <textarea
+                  name="summaryComment"
+                  value={draft.summaryComment}
+                  onChange={(event) => {
+                    setDraft((currentDraft) => ({
+                      ...currentDraft,
+                      summaryComment: event.target.value,
+                    }));
+                    setSaveMessage(null);
+                  }}
+                  placeholder="Summarize the employee's current performance, momentum, and coaching themes."
+                  rows={8}
+                />
+              </label>
+
+              <div className="button-row">
+                <button className="submit-button" type="submit" disabled={isSaving}>
+                  {isSaving
+                    ? "Saving..."
+                    : selectedEvaluation
+                      ? "Save draft changes"
+                      : "Create draft"}
+                </button>
+              </div>
+
+              <p className="supporting-text">
+                {selectedEvaluation
+                  ? `Editing the existing ${selectedReviewCycle.name} draft for ${selectedEmployee.full_name}.`
+                  : `No draft exists yet for ${selectedEmployee.full_name} in ${selectedReviewCycle.name}.`}
+              </p>
+            </form>
+          ) : (
+            <p className="supporting-text">
+              Choose an employee and review cycle to start an evaluation draft.
+            </p>
+          )}
+        </section>
+
+        <section className="panel history-panel">
+          <h2>Existing evaluations</h2>
+          {isLoadingEvaluations ? (
+            <p className="supporting-text">Loading evaluations...</p>
+          ) : selectedEvaluation || priorEvaluations.length > 0 ? (
+            <div className="history-list">
+              {selectedEvaluation ? (
+                <article className="history-card" key={selectedEvaluation.id}>
+                  <p className="history-card-eyebrow">Current working cycle</p>
+                  <h3>{selectedEvaluation.review_cycle_name}</h3>
+                  <p className="history-card-rating">
+                    Performance {selectedEvaluation.performance_rating.toFixed(2)}
+                    {" · "}
+                    Potential {selectedEvaluation.potential_rating}
+                  </p>
+                  <p>{selectedEvaluation.summary_comment ?? "No narrative notes saved yet."}</p>
+                </article>
+              ) : null}
+
+              {priorEvaluations.map((evaluation) => (
+                <article className="history-card" key={evaluation.id}>
+                  <p className="history-card-eyebrow">Saved evaluation</p>
+                  <h3>{evaluation.review_cycle_name}</h3>
+                  <p className="history-card-rating">
+                    Performance {evaluation.performance_rating.toFixed(2)}
+                    {" · "}
+                    Potential {evaluation.potential_rating}
+                  </p>
+                  <p>{evaluation.summary_comment ?? "No narrative notes were saved."}</p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="supporting-text">
+              No draft or prior evaluations are available for the selected employee yet.
+            </p>
+          )}
+        </section>
+      </section>
+    </div>
+  );
+}
 
 function App() {
   const [username, setUsername] = useState("");
@@ -74,6 +718,15 @@ function App() {
     }
   }
 
+  function handleSessionError(message: string) {
+    startTransition(() => {
+      setToken(null);
+      setCurrentUser(null);
+    });
+    setPassword("");
+    setErrorMessage(message);
+  }
+
   function handleSignOut() {
     startTransition(() => {
       setToken(null);
@@ -83,90 +736,27 @@ function App() {
     setErrorMessage(null);
   }
 
-  if (currentUser) {
+  if (currentUser && token) {
+    if (isManagerWorkflowUser(currentUser)) {
+      return (
+        <ManagerWorkspace
+          currentUser={currentUser}
+          token={token}
+          isRefreshing={isRefreshing}
+          onRefreshCurrentUser={handleRefreshCurrentUser}
+          onSessionError={handleSessionError}
+          onSignOut={handleSignOut}
+        />
+      );
+    }
+
     return (
-      <div className="page-shell">
-        <main className="shell-layout">
-          <section className="hero-copy">
-            <p className="eyebrow">Authenticated Shell</p>
-            <h1>{appName}</h1>
-            <p className="lede">
-              Local sign-in is active, the backend knows who you are, and role
-              checks are ready for future protected workflows.
-            </p>
-            <div className="button-row">
-              <button
-                className="button-link"
-                type="button"
-                onClick={handleRefreshCurrentUser}
-                disabled={isRefreshing}
-              >
-                {isRefreshing ? "Refreshing..." : "Refresh current user"}
-              </button>
-              <button className="ghost-button" type="button" onClick={handleSignOut}>
-                Sign out
-              </button>
-            </div>
-          </section>
-
-          <section className="panel">
-            <h2>Signed in as</h2>
-            <dl className="details-list">
-              <div>
-                <dt>Name</dt>
-                <dd>{currentUser.full_name}</dd>
-              </div>
-              <div>
-                <dt>Username</dt>
-                <dd>{currentUser.username}</dd>
-              </div>
-              <div>
-                <dt>Auth provider</dt>
-                <dd>{currentUser.auth_provider}</dd>
-              </div>
-              <div>
-                <dt>Status</dt>
-                <dd>{currentUser.is_active ? "Active" : "Inactive"}</dd>
-              </div>
-            </dl>
-            <h2>Roles</h2>
-            <div className="role-list" aria-label="Assigned roles">
-              {currentUser.roles.map((role) => (
-                <span className="role-pill" key={role}>
-                  {role}
-                </span>
-              ))}
-            </div>
-          </section>
-        </main>
-
-        <section className="notes-grid" aria-label="Authenticated notes">
-          <article className="note-card">
-            <h2>Available now</h2>
-            <p>
-              Login, current-user lookup, server-side role checks, and
-              development-only seeded demo users are available for local
-              development.
-            </p>
-          </article>
-
-          <article className="note-card">
-            <h2>Still deferred</h2>
-            <p>
-              LDAP integration, password reset flows, audit history, and
-              employee evaluation workflows remain intentionally out of scope for
-              this first pass.
-            </p>
-          </article>
-
-          <article className="note-card">
-            <h2>Backend endpoints</h2>
-            <p className="api-line">{API_BASE_URL}/auth/login</p>
-            <p className="api-line">{API_BASE_URL}/auth/me</p>
-            <p className="api-line">{API_BASE_URL}/health</p>
-          </article>
-        </section>
-      </div>
+      <AuthenticatedShell
+        currentUser={currentUser}
+        isRefreshing={isRefreshing}
+        onRefreshCurrentUser={handleRefreshCurrentUser}
+        onSignOut={handleSignOut}
+      />
     );
   }
 
@@ -174,12 +764,12 @@ function App() {
     <div className="page-shell">
       <main className="hero">
         <section className="hero-copy">
-          <p className="eyebrow">Local Authentication</p>
+          <p className="eyebrow">Manager Workflow</p>
           <h1>{appName}</h1>
           <p className="lede">
-            Sign in with a locally managed demo account to reach the first
-            authenticated shell. Business workflows are still intentionally
-            hidden until the access model is in place.
+            Sign in with a locally managed demo account to view your authorized
+            employees and create or edit draft evaluations with structured
+            ratings and narrative notes.
           </p>
           <a
             className="button-link"
@@ -202,7 +792,7 @@ function App() {
                 type="text"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                placeholder="hr.harper"
+                placeholder="manager.avery"
                 required
               />
             </label>
@@ -229,27 +819,28 @@ function App() {
 
           <p className="supporting-text">
             Demo credentials and setup steps are documented in the repository
-            README. For a conservative first pass, the frontend keeps the access
-            token in memory only, so refreshing the page signs you out.
+            README. The frontend keeps the access token in memory only, so
+            refreshing the page signs you out.
           </p>
         </section>
       </main>
 
       <section className="notes-grid" aria-label="Project notes">
         <article className="note-card">
-          <h2>Included right now</h2>
+          <h2>Manager workflow</h2>
           <p>
-            The repository contains local database-backed users, secure password
-            hashing, a login endpoint, a current-user endpoint, seeded fake
-            users for development, and server-side role-check scaffolding.
+            The first UI flow lets managers view report employees, open a draft
+            evaluation for a selected review cycle, and save ratings plus
+            narrative notes.
           </p>
         </article>
 
         <article className="note-card">
-          <h2>Not included yet</h2>
+          <h2>Simple by design</h2>
           <p>
-            LDAP, password reset, audit reporting, and employee evaluation
-            workflows are intentionally deferred to later roadmap phases.
+            This pass does not add approvals, publishing, calibration, or
+            advanced workflow engines. It focuses on an easy-to-follow draft
+            editing experience.
           </p>
         </article>
 

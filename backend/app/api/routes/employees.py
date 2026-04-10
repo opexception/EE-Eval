@@ -18,9 +18,14 @@ def list_employees(
     current_user: CurrentUserDep,
     session: DatabaseSessionDep,
     service: EmployeeServiceDep,
+    reports_only: bool = False,
 ) -> list[EmployeeResponse]:
     try:
-        return service.list_employees(session, current_user)
+        return service.list_employees(
+            session,
+            current_user,
+            reports_only=reports_only,
+        )
     except ServiceError as exc:
         raise to_http_exception(exc) from exc
 

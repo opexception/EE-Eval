@@ -30,6 +30,8 @@ docs/      product, security, and roadmap documentation
 - Docker
 - Docker Compose
 - Python 3
+- Node.js 20 or newer
+- npm
 
 ## Backend Local Development
 
@@ -80,6 +82,45 @@ make backend-test
 ```
 
 `backend/requirements-dev.txt` already includes `backend/requirements.txt`, so for day-to-day development you can usually install just the dev requirements file after the venv exists.
+
+## Frontend Local Development
+
+This repository supports a simple local frontend workflow using npm and the committed lockfile in `frontend/package-lock.json`.
+
+Install frontend dependencies from a fresh clone:
+
+```bash
+cd frontend
+npm ci
+```
+
+Start the Vite development server:
+
+```bash
+npm run dev
+```
+
+Run the frontend tests:
+
+```bash
+npm test
+```
+
+Run the frontend production build check:
+
+```bash
+npm run build
+```
+
+If you prefer to stay at the repository root, the equivalent commands are:
+
+```bash
+npm --prefix frontend ci
+npm --prefix frontend test
+npm --prefix frontend run build
+```
+
+The frontend toolchain is installed from local project dependencies only. No global `vite`, `vitest`, or `tsc` installation is required.
 
 ## Quick start
 
@@ -206,6 +247,8 @@ This scaffold intentionally keeps the implementation simple:
 - Demo users and review data are seeded only in development and use fake names and a documented fake password.
 - `DELETE` endpoints archive employees, review cycles, and evaluations instead of hard-deleting database rows.
 - The frontend keeps the access token in memory only for this first pass, so refreshing the page signs you out.
+- People managers can use the first end-to-end frontend workflow to choose a report employee, open the active review cycle, and create or edit a draft evaluation.
+- The first manager draft screen stores structured ratings plus one narrative note field using the existing evaluation summary comment.
 - HR administrators can manage employees and review cycles, people managers can manage evaluations for their reporting line, upper managers are read-only for their reporting line, and executives are read-only at the summary level.
 - Employee access to evaluation records is intentionally deferred until published/shared visibility rules are designed more fully.
 - Business workflows, LDAP integration, password reset, attachments, and broader authorization rules are still deferred to later phases.

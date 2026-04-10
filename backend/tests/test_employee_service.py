@@ -15,6 +15,19 @@ def test_manager_only_sees_their_reporting_scope(db_session, domain_context) -> 
     }
 
 
+def test_reports_only_view_excludes_the_manager_profile(db_session, domain_context) -> None:
+    responses = EmployeeService().list_employees(
+        db_session,
+        domain_context.manager_user,
+        reports_only=True,
+    )
+
+    assert {response.employee_number for response in responses} == {
+        "EMP-1300",
+        "EMP-1310",
+    }
+
+
 def test_hr_can_create_employee_profiles(db_session, domain_context) -> None:
     response = EmployeeService().create_employee(
         db_session,

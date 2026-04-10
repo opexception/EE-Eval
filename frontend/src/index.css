@@ -207,7 +207,24 @@ a {
   font: inherit;
 }
 
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(29, 36, 48, 0.15);
+  background: rgba(255, 255, 255, 0.92);
+  color: #1d2430;
+  font: inherit;
+}
+
 .field input:focus {
+  outline: 2px solid rgba(138, 91, 43, 0.25);
+  border-color: #8a5b2b;
+}
+
+.field select:focus,
+.field textarea:focus {
   outline: 2px solid rgba(138, 91, 43, 0.25);
   border-color: #8a5b2b;
 }
@@ -225,6 +242,12 @@ a {
 .error-text {
   margin: 0;
   color: #8a2b2b;
+  font-weight: 600;
+}
+
+.success-text {
+  margin: 0;
+  color: #2e6a37;
   font-weight: 600;
 }
 
@@ -281,6 +304,104 @@ a {
   margin: 1.5rem auto 0;
 }
 
+.workflow-grid {
+  display: grid;
+  grid-template-columns: minmax(15rem, 1fr) minmax(0, 2fr) minmax(16rem, 1fr);
+  gap: 1.5rem;
+  max-width: 70rem;
+  margin: 1.5rem auto 0;
+}
+
+.employee-list,
+.history-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.employee-card {
+  width: 100%;
+  text-align: left;
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(29, 36, 48, 0.08);
+  background: rgba(247, 243, 234, 0.75);
+  cursor: pointer;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.employee-card:hover {
+  background: rgba(242, 232, 212, 0.95);
+}
+
+.employee-card-selected {
+  border-color: rgba(138, 91, 43, 0.4);
+  background: rgba(248, 233, 211, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(138, 91, 43, 0.15);
+}
+
+.employee-card-name {
+  font-weight: 700;
+  color: #24303b;
+}
+
+.employee-card-meta {
+  color: #5a6672;
+  font-size: 0.95rem;
+}
+
+.editor-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.compact-field {
+  min-width: 15rem;
+}
+
+.evaluation-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.field-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.history-card {
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(29, 36, 48, 0.08);
+  background: rgba(247, 243, 234, 0.75);
+}
+
+.history-card h3 {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.history-card p {
+  margin: 0;
+  color: #43505b;
+}
+
+.history-card-eyebrow {
+  color: #8a5b2b;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.history-card-rating {
+  margin-bottom: 0.65rem;
+  font-weight: 600;
+}
+
 .note-card {
   padding: 1.75rem;
 }
@@ -293,7 +414,12 @@ a {
 @media (max-width: 900px) {
   .hero,
   .shell-layout,
+  .workflow-grid,
   .notes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .field-grid {
     grid-template-columns: 1fr;
   }
 

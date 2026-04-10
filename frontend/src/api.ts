@@ -18,6 +18,51 @@ export interface CurrentUser {
   is_active: boolean;
 }
 
+export interface Employee {
+  id: number;
+  employee_number: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  job_title: string;
+  department: string;
+  manager_id: number | null;
+  manager_name: string | null;
+  is_active: boolean;
+}
+
+export interface ReviewCycle {
+  id: number;
+  name: string;
+  cycle_type: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  created_by_user_id: number;
+  updated_by_user_id: number;
+}
+
+export interface Evaluation {
+  id: number;
+  employee_id: number;
+  employee_name: string;
+  review_cycle_id: number;
+  review_cycle_name: string;
+  author_user_id: number;
+  updated_by_user_id: number;
+  performance_rating: number;
+  potential_rating: number;
+  summary_comment: string | null;
+  status: string;
+}
+
+export interface EvaluationSaveRequest {
+  performance_rating: number;
+  potential_rating: number;
+  summary_comment: string | null;
+  status: string;
+}
+
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
 
@@ -56,6 +101,29 @@ async function requestJson<T>(
   return (await response.json()) as T;
 }
 
+function createAuthHeaders(token: string, headers?: HeadersInit): HeadersInit {
+  return {
+    ...(headers ?? {}),
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+function buildQuery(
+  params: Record<string, string | number | boolean | undefined>,
+): string {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) {
+      continue;
+    }
+
+    searchParams.set(key, String(value));
+  }
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 export function login(request: LoginRequest): Promise<AuthTokenResponse> {
   return requestJson<AuthTokenResponse>("/auth/login", {
     method: "POST",
@@ -74,3 +142,65 @@ export function getCurrentUser(token: string): Promise<CurrentUser> {
   });
 }
 
+export function getEmployees(
+  token: string,
+  options?: { reportsOnly?: boolean },
+): Promise<Employee[]> {
+  const query = buildQuery({
+    reports_only: options?.reportsOnly,
+  });
+
+  return requestJson<Employee[]>(`/employees${query}`, {
+    headers: createAuthHeaders(token),
+  });
+}
+
+export function getReviewCycles(token: string): Promise<ReviewCycle[]> {
+  return requestJson<ReviewCycle[]>("/review-cycles", {
+    headers: createAuthHeaders(token),
+  });
+}
+
+export function getEvaluations(
+  token: string,
+  options?: { employeeId?: number; reviewCycleId?: number },
+): Promise<Evaluation[]> {
+  const query = buildQuery({
+    employee_id: options?.employeeId,
+    review_cycle_id: options?.reviewCycleId,
+  });
+
+  return requestJson<Evaluation[]>(`/evaluations${query}`, {
+    headers: createAuthHeaders(token),
+  });
+}
+
+export function createEvaluation(
+  token: string,
+  request: EvaluationSaveRequest & {
+    employee_id: number;
+    review_cycle_id: number;
+  },
+): Promise<Evaluation> {
+  return requestJson<Evaluation>("/evaluations", {
+    method: "POST",
+    headers: createAuthHeaders(token, {
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify(request),
+  });
+}
+
+export function updateEvaluation(
+  token: string,
+  evaluationId: number,
+  request: EvaluationSaveRequest,
+): Promise<Evaluation> {
+  return requestJson<Evaluation>(`/evaluations/${evaluationId}`, {
+    method: "PUT",
+    headers: createAuthHeaders(token, {
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify(request),
+  });
+}

@@ -20,6 +20,7 @@ class EmployeeService:
         self,
         session: Session,
         current_user: User,
+        reports_only: bool = False,
     ) -> list[EmployeeResponse]:
         if not self.access_service.can_view_employees(current_user):
             raise AuthorizationError(
@@ -27,6 +28,11 @@ class EmployeeService:
             )
 
         visible_ids = self.access_service.get_visible_employee_ids(session, current_user)
+        if reports_only:
+            linked_employee = self.access_service.get_linked_employee(session, current_user)
+            if linked_employee is not None:
+                visible_ids.discard(linked_employee.id)
+
         statement = (
             select(Employee)
             .options(selectinload(Employee.manager))

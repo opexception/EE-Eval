@@ -228,3 +228,10 @@ As of the first employee/review CRUD foundation pass:
 - system administrators still do not automatically receive HR-content access
 - employee profile management is HR-only in this slice, even if later workflow phases allow broader delegated administration
 - employee access to evaluations is intentionally deferred until published/shared visibility rules are better defined
+
+As of the first end-to-end manager workflow pass:
+
+- people managers can use the frontend to see report employees only, excluding their own employee record from the working list
+- managers open or continue a draft evaluation inside the currently selected review cycle, with the active cycle used as the default frontend choice
+- the first draft workflow captures performance rating, potential rating, and one narrative note field
+- publish, approval, calibration, and field-level narrative visibility rules are still deferred to later workflow phases
