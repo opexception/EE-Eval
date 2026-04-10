@@ -29,6 +29,57 @@ docs/      product, security, and roadmap documentation
 
 - Docker
 - Docker Compose
+- Python 3
+
+## Backend Local Development
+
+This repository supports a simple local backend workflow using a repo-local virtual environment.
+
+Create the virtual environment:
+
+```bash
+python3 -m venv .venv
+```
+
+Activate it:
+
+```bash
+source .venv/bin/activate
+```
+
+Upgrade pip:
+
+```bash
+python -m pip install --upgrade pip
+```
+
+Install backend runtime dependencies:
+
+```bash
+python -m pip install -r backend/requirements.txt
+```
+
+Install backend development and test dependencies:
+
+```bash
+python -m pip install -r backend/requirements-dev.txt
+```
+
+Run backend tests:
+
+```bash
+pytest backend/tests -q
+```
+
+If you prefer Make targets from the repository root:
+
+```bash
+make backend-venv
+make backend-dev-install
+make backend-test
+```
+
+`backend/requirements-dev.txt` already includes `backend/requirements.txt`, so for day-to-day development you can usually install just the dev requirements file after the venv exists.
 
 ## Quick start
 

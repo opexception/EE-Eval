@@ -1,10 +1,8 @@
-from collections.abc import Generator
 from typing import Any
 
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from fastapi import Response, status
 
-from app.api.deps import get_db_session, get_health_service
+from app.api.routes.health import get_liveness, get_readiness
 from app.schemas.health import LivenessResponse, ReadinessResponse
 
 
@@ -19,43 +17,33 @@ class StubHealthService:
         return self._readiness
 
 
-def _override_db_session() -> Generator[object, None, None]:
-    yield object()
+def test_liveness_endpoint_returns_ok() -> None:
+    response = get_liveness(StubHealthService(ReadinessResponse(status="ok", database="ok")))
+
+    assert response.model_dump() == {"status": "ok"}
 
 
-def test_liveness_endpoint_returns_ok(client: TestClient) -> None:
-    response = client.get("/api/health")
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
-
-
-def test_readiness_endpoint_returns_ok_when_service_reports_ready(
-    app: FastAPI,
-    client: TestClient,
-) -> None:
-    app.dependency_overrides[get_db_session] = _override_db_session
-    app.dependency_overrides[get_health_service] = lambda: StubHealthService(
-        ReadinessResponse(status="ok", database="ok")
+def test_readiness_endpoint_returns_ok_when_service_reports_ready() -> None:
+    response = Response()
+    payload = get_readiness(
+        response=response,
+        session=object(),
+        service=StubHealthService(ReadinessResponse(status="ok", database="ok")),
     )
 
-    response = client.get("/api/health/ready")
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok", "database": "ok"}
+    assert response.status_code == status.HTTP_200_OK
+    assert payload.model_dump() == {"status": "ok", "database": "ok"}
 
 
-def test_readiness_endpoint_returns_503_when_service_reports_not_ready(
-    app: FastAPI,
-    client: TestClient,
-) -> None:
-    app.dependency_overrides[get_db_session] = _override_db_session
-    app.dependency_overrides[get_health_service] = lambda: StubHealthService(
-        ReadinessResponse(status="error", database="unavailable")
+def test_readiness_endpoint_returns_503_when_service_reports_not_ready() -> None:
+    response = Response()
+    payload = get_readiness(
+        response=response,
+        session=object(),
+        service=StubHealthService(
+            ReadinessResponse(status="error", database="unavailable")
+        ),
     )
 
-    response = client.get("/api/health/ready")
-
-    assert response.status_code == 503
-    assert response.json() == {"status": "error", "database": "unavailable"}
-
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert payload.model_dump() == {"status": "error", "database": "unavailable"}
