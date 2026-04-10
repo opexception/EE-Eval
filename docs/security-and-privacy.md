@@ -151,16 +151,50 @@ At a minimum, v1 should include:
 ---
 
 ## Open security and privacy questions
-1. Are there data retention requirements for evaluation records?
-2. Are there deletion or legal hold requirements?
-3. Do especially sensitive records need extra confidentiality controls?
-4. Is auditing read access required, or only changes?
-5. Will attachments be allowed in v1?
-6. Are exports restricted for certain roles or data types?
-7. Will MFA be required later?
-8. Are there internal policy requirements for password rules and lockouts?
-9. Are there compliance expectations that should shape design early?
-10. Should some records require additional approval before visibility expands?
+#Q1. Are there data retention requirements for evaluation records?
+Answer:
+- 10 years
+
+#Q2. Are there deletion or legal hold requirements?
+Answer:
+- yes. Indefinitely if on legal hold.
+
+#Q3. Do especially sensitive records need extra confidentiality controls?
+Answer:
+- yes. High level management needs special attention.
+
+#Q4. Is auditing read access required, or only changes?
+Answer:
+- 
+
+#Q5. Will attachments be allowed in v1?
+Answer:
+- yes.
+
+#Q6. Are exports restricted for certain roles or data types?
+Answer:
+- yes. private/sensitive comments should not be exported. 
+
+#Q7. Will MFA be required later?
+Answer:
+- Yes.
+
+#Q8. Are there internal policy requirements for password rules and lockouts?
+Answer:
+- 16 charaters
+- 1 uppercase, 1 lowercase, 1 number, one special.
+- No repeat for 20 previous passwords
+- Password change required every 12 months.
+- Lockout after 5 failed attempts.
+
+#Q9. Are there compliance expectations that should shape design early?
+Answer:
+- The organization adheres to GDPR and NIST SP-800-171 compliance.
+
+#Q10. Should some records require additional approval before visibility expands?
+Answer:
+- yes.
+
 
 ---
 

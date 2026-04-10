@@ -158,13 +158,38 @@ The following scope boundaries should be explicitly decided:
 ---
 
 ## Important unresolved policy questions
-1. Should HR be able to see everything by default?
-2. Should executives see full employee-level detail or only certain categories?
-3. Should managers only see direct reports?
-4. Should skip-level leadership see detailed records or summaries first?
-5. Should view and edit rights be separated for sensitive fields?
-6. Should especially sensitive cases require a confidentiality flag and narrower visibility?
-7. Should audit logs include read access, write access, or both?
+#Q1. Should HR be able to see everything by default?
+Answer:
+- Yes.
+
+#Q2. Should executives see full employee-level detail or only certain categories?
+Answer:
+- Only the following details:
+- Latest 3 year rolling average performance score
+- Current review score
+- 9-boxes for the previous 3 years
+- Current 9-box position
+- Overall/summary comment from manager for this review.
+
+#Q3. Should managers only see direct reports?
+Answer:
+- Managers should be able to see all reports below them.
+
+#Q4. Should skip-level leadership see detailed records or summaries first?
+Answer:
+- Summaries.
+
+#Q5. Should view and edit rights be separated for sensitive fields?
+Answer:
+- Yes
+
+#Q6. Should especially sensitive cases require a confidentiality flag and narrower visibility?
+Answer:
+- yes
+
+#Q7. Should audit logs include read access, write access, or both?
+Answer:
+- audit logs should be read-only.
 
 ---
 
