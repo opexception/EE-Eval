@@ -191,6 +191,8 @@ docker compose down -v
 - Backend employees endpoint: `http://localhost:8000/api/employees`
 - Backend review cycles endpoint: `http://localhost:8000/api/review-cycles`
 - Backend evaluations endpoint: `http://localhost:8000/api/evaluations`
+- Backend evaluation audit endpoint: `http://localhost:8000/api/evaluations/{evaluation_id}/audit-events`
+- Backend 9-box endpoint: `http://localhost:8000/api/nine-box`
 - PostgreSQL: `localhost:5432`
 
 ## Environment files
@@ -249,6 +251,15 @@ This scaffold intentionally keeps the implementation simple:
 - The frontend keeps the access token in memory only for this first pass, so refreshing the page signs you out.
 - People managers can use the first end-to-end frontend workflow to choose a report employee, open the active review cycle, and create or edit a draft evaluation.
 - The first manager draft screen stores structured ratings plus one narrative note field using the existing evaluation summary comment.
+- The backend now also supports manager-only rationale plus promotion recommendation and promotion rationale fields for evaluations, but the current frontend does not edit those fields yet.
+- Saved evaluations now also store a 9-box snapshot so placement history remains stable even if future threshold rules change.
+- The first 9-box slice renders a matrix for the selected review cycle and supports drill-down from a cell to employee detail for already-authorized users.
+- In this first pass, the 9-box performance axis uses the saved evaluation rating for the selected cycle instead of a true rolling 3-year average, because dedicated multi-year performance-history inputs are still pending.
+- Only employees with a saved evaluation in the selected review cycle appear in the current 9-box matrix.
+- Evaluation change history is now recorded in a simple audit-entry table with actor, timestamp, action, and changed-field metadata.
+- The first audit trail intentionally redacts sensitive text and recommendation values instead of copying them into audit records.
+- Sensitive evaluation fields are visible only to HR administrators and people managers who can actively manage that evaluation; upper managers and executives receive summary-safe responses only.
+- Evaluation audit-history access is intentionally narrower than general evaluation read access in this first pass and is limited to HR administrators plus in-scope people managers.
 - HR administrators can manage employees and review cycles, people managers can manage evaluations for their reporting line, upper managers are read-only for their reporting line, and executives are read-only at the summary level.
 - Employee access to evaluation records is intentionally deferred until published/shared visibility rules are designed more fully.
 - Business workflows, LDAP integration, password reset, attachments, and broader authorization rules are still deferred to later phases.

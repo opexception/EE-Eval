@@ -46,7 +46,17 @@ class Evaluation(Base):
         nullable=False,
     )
     potential_rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    performance_tier: Mapped[str] = mapped_column(String(32), nullable=False)
+    potential_tier: Mapped[str] = mapped_column(String(32), nullable=False)
+    nine_box_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    nine_box_label: Mapped[str] = mapped_column(String(80), nullable=False)
     summary_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    manager_rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    promotion_recommendation: Mapped[str | None] = mapped_column(
+        String(40),
+        nullable=True,
+    )
+    promotion_rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(40), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

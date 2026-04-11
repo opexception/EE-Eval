@@ -19,6 +19,7 @@ from app.models.employee import Employee
 from app.models.evaluation import Evaluation, EvaluationStatus
 from app.models.review_cycle import ReviewCycle, ReviewCycleStatus, ReviewCycleType
 from app.models.user import AuthProvider
+from app.services.nine_box_service import NineBoxService
 
 
 @pytest.fixture(autouse=True)
@@ -258,6 +259,8 @@ def domain_context(db_session: Session) -> DomainContext:
     db_session.add_all([active_review_cycle, archived_review_cycle])
     db_session.flush()
 
+    placement_snapshot = NineBoxService().build_snapshot(3.70, 2)
+
     employee_evaluation = Evaluation(
         employee_id=employee_record.id,
         review_cycle_id=active_review_cycle.id,
@@ -265,7 +268,18 @@ def domain_context(db_session: Session) -> DomainContext:
         updated_by_user_id=manager_user.id,
         performance_rating=3.70,
         potential_rating=2,
+        performance_tier=placement_snapshot.performance_tier,
+        potential_tier=placement_snapshot.potential_tier,
+        nine_box_code=placement_snapshot.nine_box_code,
+        nine_box_label=placement_snapshot.nine_box_label,
         summary_comment="Taylor is trending upward and taking on more mentoring work.",
+        manager_rationale=(
+            "Taylor has become much more dependable in ambiguous projects and is beginning to mentor newer engineers."
+        ),
+        promotion_recommendation="future_consideration",
+        promotion_rationale=(
+            "Taylor is moving toward the next level, but one more cycle of consistent cross-team leadership would help."
+        ),
         status=EvaluationStatus.DRAFT.value,
     )
     db_session.add(employee_evaluation)

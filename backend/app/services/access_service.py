@@ -53,6 +53,16 @@ class AccessService:
             )
         )
 
+    def can_view_evaluation_sensitive_fields(self, current_user: User) -> bool:
+        return bool(
+            current_user.role_names.intersection(
+                {
+                    RoleName.HR_ADMIN.value,
+                    RoleName.PEOPLE_MANAGER.value,
+                }
+            )
+        )
+
     def get_linked_employee(self, session: Session, current_user: User) -> Employee | None:
         statement = select(Employee).where(Employee.user_id == current_user.id)
         return session.scalar(statement)
@@ -164,3 +174,35 @@ class AccessService:
 
         if employee.id == linked_employee.id or employee.id not in visible_ids:
             raise AuthorizationError("You do not have permission to manage this evaluation.")
+
+    def assert_can_view_evaluation_sensitive_fields(
+        self,
+        session: Session,
+        current_user: User,
+        employee: Employee,
+    ) -> None:
+        if RoleName.HR_ADMIN.value in current_user.role_names:
+            return
+
+        if RoleName.PEOPLE_MANAGER.value not in current_user.role_names:
+            raise AuthorizationError(
+                "You do not have permission to view sensitive evaluation fields."
+            )
+
+        self.assert_can_manage_evaluation_employee(session, current_user, employee)
+
+    def assert_can_view_evaluation_audit(
+        self,
+        session: Session,
+        current_user: User,
+        employee: Employee,
+    ) -> None:
+        if RoleName.HR_ADMIN.value in current_user.role_names:
+            return
+
+        if RoleName.PEOPLE_MANAGER.value not in current_user.role_names:
+            raise AuthorizationError(
+                "You do not have permission to view evaluation audit history."
+            )
+
+        self.assert_can_manage_evaluation_employee(session, current_user, employee)

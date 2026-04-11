@@ -7,12 +7,16 @@ import {
   getCurrentUser,
   getEmployees,
   getEvaluations,
+  getNineBoxMatrix,
   getReviewCycles,
   login,
   updateEvaluation,
   type CurrentUser,
   type Employee,
   type Evaluation,
+  type NineBoxCell,
+  type NineBoxEmployee,
+  type NineBoxMatrix,
   type ReviewCycle,
 } from "./api";
 import "./index.css";
@@ -58,6 +62,118 @@ function findPreferredReviewCycle(reviewCycles: ReviewCycle[]): ReviewCycle | nu
 
 function compareEvaluationsByCycleName(a: Evaluation, b: Evaluation): number {
   return a.review_cycle_name.localeCompare(b.review_cycle_name) * -1;
+}
+
+const POTENTIAL_ROW_ORDER = ["high", "moderate", "limited"] as const;
+const PERFORMANCE_COLUMN_ORDER = ["at_risk", "effective", "high"] as const;
+
+function formatEmployeeCount(count: number): string {
+  return count === 1 ? "1 employee" : `${count} employees`;
+}
+
+function findCellForEmployee(
+  matrix: NineBoxMatrix | null,
+  employeeId: number | null,
+): NineBoxCell | null {
+  if (!matrix || !employeeId) {
+    return null;
+  }
+
+  return (
+    matrix.cells.find((cell) =>
+      cell.employees.some((employee) => employee.employee_id === employeeId),
+    ) ?? null
+  );
+}
+
+function findFirstPopulatedCell(matrix: NineBoxMatrix | null): NineBoxCell | null {
+  if (!matrix) {
+    return null;
+  }
+
+  return matrix.cells.find((cell) => cell.employee_count > 0) ?? matrix.cells[0] ?? null;
+}
+
+function getMatrixCell(
+  matrix: NineBoxMatrix | null,
+  potentialTier: string,
+  performanceTier: string,
+): NineBoxCell | null {
+  if (!matrix) {
+    return null;
+  }
+
+  return (
+    matrix.cells.find(
+      (cell) =>
+        cell.potential_tier === potentialTier &&
+        cell.performance_tier === performanceTier,
+    ) ?? null
+  );
+}
+
+function compareNineBoxEmployeesByName(a: NineBoxEmployee, b: NineBoxEmployee): number {
+  return a.employee_name.localeCompare(b.employee_name);
+}
+
+function createNineBoxEmployeeFromSelection(
+  employee: Employee,
+  evaluation: Evaluation,
+): NineBoxEmployee {
+  return {
+    employee_id: employee.id,
+    employee_number: employee.employee_number,
+    employee_name: employee.full_name,
+    job_title: employee.job_title,
+    department: employee.department,
+    manager_name: employee.manager_name,
+    is_active: employee.is_active,
+    evaluation_id: evaluation.id,
+    performance_rating: evaluation.performance_rating,
+    potential_rating: evaluation.potential_rating,
+    performance_tier: evaluation.performance_tier,
+    potential_tier: evaluation.potential_tier,
+    nine_box_code: evaluation.nine_box_code,
+    nine_box_label: evaluation.nine_box_label,
+    summary_comment: evaluation.summary_comment,
+    evaluation_status: evaluation.status,
+  };
+}
+
+function updateMatrixWithEvaluation(
+  matrix: NineBoxMatrix | null,
+  employee: Employee,
+  evaluation: Evaluation,
+): NineBoxMatrix | null {
+  if (!matrix) {
+    return null;
+  }
+
+  const updatedEmployee = createNineBoxEmployeeFromSelection(employee, evaluation);
+  const cells = matrix.cells.map((cell) => {
+    const remainingEmployees = cell.employees.filter(
+      (currentEmployee) => currentEmployee.employee_id !== employee.id,
+    );
+    const nextEmployees =
+      cell.box_code === evaluation.nine_box_code
+        ? [...remainingEmployees, updatedEmployee].sort(compareNineBoxEmployeesByName)
+        : remainingEmployees;
+
+    return {
+      ...cell,
+      employees: nextEmployees,
+      employee_count: nextEmployees.length,
+    };
+  });
+
+  return {
+    ...matrix,
+    total_employees: cells.reduce(
+      (employeeCount, cell) => employeeCount + cell.employee_count,
+      0,
+    ),
+    cells,
+  };
 }
 
 type AuthenticatedShellProps = {
@@ -177,13 +293,16 @@ function ManagerWorkspace({
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [reviewCycles, setReviewCycles] = useState<ReviewCycle[]>([]);
   const [employeeEvaluations, setEmployeeEvaluations] = useState<Evaluation[]>([]);
+  const [nineBoxMatrix, setNineBoxMatrix] = useState<NineBoxMatrix | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
   const [selectedReviewCycleId, setSelectedReviewCycleId] = useState<number | null>(null);
+  const [selectedMatrixCellCode, setSelectedMatrixCellCode] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>(createEmptyDraft);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [isLoadingWorkspace, setIsLoadingWorkspace] = useState(true);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
+  const [isLoadingNineBox, setIsLoadingNineBox] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -244,6 +363,66 @@ function ManagerWorkspace({
       isMounted = false;
     };
   }, [onSessionError, token]);
+
+  useEffect(() => {
+    if (!selectedReviewCycleId) {
+      setNineBoxMatrix(null);
+      setSelectedMatrixCellCode(null);
+      return;
+    }
+
+    const reviewCycleId = selectedReviewCycleId;
+    let isMounted = true;
+
+    async function loadNineBoxMatrix() {
+      setIsLoadingNineBox(true);
+
+      try {
+        const matrix = await getNineBoxMatrix(token, {
+          reviewCycleId,
+        });
+
+        if (!isMounted) {
+          return;
+        }
+
+        const preferredCell =
+          findCellForEmployee(matrix, selectedEmployeeId) ??
+          findFirstPopulatedCell(matrix);
+
+        startTransition(() => {
+          setNineBoxMatrix(matrix);
+          setSelectedMatrixCellCode(preferredCell?.box_code ?? null);
+        });
+      } catch (error) {
+        const message =
+          error instanceof ApiError
+            ? error.message
+            : "Unable to load the 9-box matrix.";
+
+        if (error instanceof ApiError && error.status === 401) {
+          onSessionError(message);
+          return;
+        }
+
+        if (!isMounted) {
+          return;
+        }
+
+        setWorkflowError(message);
+      } finally {
+        if (isMounted) {
+          setIsLoadingNineBox(false);
+        }
+      }
+    }
+
+    void loadNineBoxMatrix();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onSessionError, selectedReviewCycleId, token]);
 
   useEffect(() => {
     if (!selectedEmployeeId) {
@@ -329,6 +508,28 @@ function ManagerWorkspace({
   const priorEvaluations = employeeEvaluations.filter(
     (evaluation) => evaluation.review_cycle_id !== selectedReviewCycleId,
   );
+  const selectedMatrixCell =
+    (nineBoxMatrix?.cells.find((cell) => cell.box_code === selectedMatrixCellCode) ??
+      findCellForEmployee(nineBoxMatrix, selectedEmployeeId) ??
+      findFirstPopulatedCell(nineBoxMatrix)) ??
+    null;
+  const selectedMatrixEmployee =
+    selectedMatrixCell?.employees.find(
+      (employee) => employee.employee_id === selectedEmployeeId,
+    ) ??
+    selectedMatrixCell?.employees[0] ??
+    null;
+
+  useEffect(() => {
+    if (!selectedEmployeeId || !nineBoxMatrix) {
+      return;
+    }
+
+    const matchingCell = findCellForEmployee(nineBoxMatrix, selectedEmployeeId);
+    if (matchingCell && matchingCell.box_code !== selectedMatrixCellCode) {
+      setSelectedMatrixCellCode(matchingCell.box_code);
+    }
+  }, [nineBoxMatrix, selectedEmployeeId, selectedMatrixCellCode]);
 
   async function handleSaveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -378,6 +579,10 @@ function ManagerWorkspace({
           );
           return [savedEvaluation, ...otherEvaluations].sort(compareEvaluationsByCycleName);
         });
+        setNineBoxMatrix((currentMatrix) =>
+          updateMatrixWithEvaluation(currentMatrix, selectedEmployee, savedEvaluation),
+        );
+        setSelectedMatrixCellCode(savedEvaluation.nine_box_code);
       });
       setSaveMessage(selectedEvaluation ? "Draft updated." : "Draft created.");
     } catch (error) {
@@ -405,7 +610,8 @@ function ManagerWorkspace({
           <h1>{appName}</h1>
           <p className="lede">
             View the employees in your reporting line, open a draft evaluation,
-            and save structured ratings with simple narrative notes.
+            save structured ratings with simple narrative notes, and review a
+            first-pass 9-box matrix for the selected cycle.
           </p>
           <div className="button-row">
             <button
@@ -441,7 +647,8 @@ function ManagerWorkspace({
           <p className="supporting-text">
             The first pass keeps evaluations simple: one draft per employee per
             review cycle, with explicit save actions and server-side permission
-            checks.
+            checks. The 9-box view uses the saved evaluation rating and
+            potential input for the selected cycle.
           </p>
         </section>
       </main>
@@ -598,6 +805,11 @@ function ManagerWorkspace({
                   ? `Editing the existing ${selectedReviewCycle.name} draft for ${selectedEmployee.full_name}.`
                   : `No draft exists yet for ${selectedEmployee.full_name} in ${selectedReviewCycle.name}.`}
               </p>
+              {selectedEvaluation ? (
+                <p className="supporting-text">
+                  Current 9-box placement: {selectedEvaluation.nine_box_label}
+                </p>
+              ) : null}
             </form>
           ) : (
             <p className="supporting-text">
@@ -621,6 +833,9 @@ function ManagerWorkspace({
                     {" · "}
                     Potential {selectedEvaluation.potential_rating}
                   </p>
+                  <p className="history-card-rating">
+                    9-Box {selectedEvaluation.nine_box_label}
+                  </p>
                   <p>{selectedEvaluation.summary_comment ?? "No narrative notes saved yet."}</p>
                 </article>
               ) : null}
@@ -634,6 +849,7 @@ function ManagerWorkspace({
                     {" · "}
                     Potential {evaluation.potential_rating}
                   </p>
+                  <p className="history-card-rating">9-Box {evaluation.nine_box_label}</p>
                   <p>{evaluation.summary_comment ?? "No narrative notes were saved."}</p>
                 </article>
               ))}
@@ -644,6 +860,156 @@ function ManagerWorkspace({
             </p>
           )}
         </section>
+      </section>
+
+      <section className="panel nine-box-panel" aria-label="9-box matrix">
+        <div className="editor-header">
+          <div>
+            <h2>9-box matrix</h2>
+            <p className="supporting-text">
+              This first slice shows employees with saved evaluations in the selected cycle.
+            </p>
+          </div>
+          {nineBoxMatrix ? (
+            <p className="supporting-text">
+              {nineBoxMatrix.review_cycle_name}
+              {" · "}
+              {formatEmployeeCount(nineBoxMatrix.total_employees)}
+            </p>
+          ) : null}
+        </div>
+
+        {isLoadingNineBox ? (
+          <p className="supporting-text">Loading the 9-box matrix...</p>
+        ) : nineBoxMatrix ? (
+          <div className="nine-box-layout">
+            <section>
+              <div className="nine-box-column-headings" aria-hidden="true">
+                <span />
+                <span>At-Risk</span>
+                <span>Effective</span>
+                <span>High</span>
+              </div>
+
+              <div className="nine-box-board" role="grid" aria-label="9-box placement matrix">
+                {POTENTIAL_ROW_ORDER.map((potentialTier) => (
+                  <div className="nine-box-row" key={potentialTier} role="row">
+                    <div className="nine-box-row-label">
+                      {getMatrixCell(nineBoxMatrix, potentialTier, "at_risk")?.potential_label ??
+                        "Potential"}
+                    </div>
+                    {PERFORMANCE_COLUMN_ORDER.map((performanceTier) => {
+                      const cell = getMatrixCell(
+                        nineBoxMatrix,
+                        potentialTier,
+                        performanceTier,
+                      );
+
+                      if (!cell) {
+                        return <div className="nine-box-cell" key={performanceTier} />;
+                      }
+
+                      const isSelected = cell.box_code === selectedMatrixCell?.box_code;
+                      return (
+                        <button
+                          className={`nine-box-cell-button${
+                            isSelected ? " nine-box-cell-button-selected" : ""
+                          }`}
+                          key={cell.box_code}
+                          type="button"
+                          onClick={() => {
+                            setSelectedMatrixCellCode(cell.box_code);
+                            if (cell.employees[0]) {
+                              setSelectedEmployeeId(cell.employees[0].employee_id);
+                            }
+                          }}
+                        >
+                          <span className="nine-box-cell-label">{cell.box_label}</span>
+                          <span className="nine-box-cell-count">
+                            {formatEmployeeCount(cell.employee_count)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="nine-box-drilldown">
+              {selectedMatrixCell ? (
+                <>
+                  <h3>{selectedMatrixCell.box_label}</h3>
+                  <p className="supporting-text">
+                    {selectedMatrixCell.potential_label}
+                    {" · "}
+                    {selectedMatrixCell.performance_label}
+                  </p>
+
+                  {selectedMatrixCell.employee_count === 0 ? (
+                    <p className="supporting-text">
+                      No employees currently land in this cell for the selected review cycle.
+                    </p>
+                  ) : (
+                    <div className="employee-list" role="list">
+                      {selectedMatrixCell.employees.map((employee) => (
+                        <button
+                          className={`employee-card${
+                            employee.employee_id === selectedMatrixEmployee?.employee_id
+                              ? " employee-card-selected"
+                              : ""
+                          }`}
+                          key={employee.evaluation_id}
+                          type="button"
+                          onClick={() => setSelectedEmployeeId(employee.employee_id)}
+                        >
+                          <span className="employee-card-name">{employee.employee_name}</span>
+                          <span className="employee-card-meta">{employee.job_title}</span>
+                          <span className="employee-card-meta">
+                            Performance {employee.performance_rating.toFixed(2)}
+                            {" · "}
+                            Potential {employee.potential_rating}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedMatrixEmployee ? (
+                    <article className="history-card matrix-detail-card">
+                      <p className="history-card-eyebrow">Employee detail</p>
+                      <h3>{selectedMatrixEmployee.employee_name}</h3>
+                      <p className="history-card-rating">
+                        {selectedMatrixEmployee.nine_box_label}
+                        {" · "}
+                        Performance {selectedMatrixEmployee.performance_rating.toFixed(2)}
+                        {" · "}
+                        Potential {selectedMatrixEmployee.potential_rating}
+                      </p>
+                      <p>{selectedMatrixEmployee.job_title}</p>
+                      <p>{selectedMatrixEmployee.department}</p>
+                      <p>
+                        Manager: {selectedMatrixEmployee.manager_name ?? "No manager assigned"}
+                      </p>
+                      <p>
+                        {selectedMatrixEmployee.summary_comment ??
+                          "No narrative note is saved for this evaluation yet."}
+                      </p>
+                    </article>
+                  ) : null}
+                </>
+              ) : (
+                <p className="supporting-text">
+                  Select a matrix cell to review the employees in that placement.
+                </p>
+              )}
+            </section>
+          </div>
+        ) : (
+          <p className="supporting-text">
+            Choose a review cycle to load the first 9-box view.
+          </p>
+        )}
       </section>
     </div>
   );
@@ -830,8 +1196,8 @@ function App() {
           <h2>Manager workflow</h2>
           <p>
             The first UI flow lets managers view report employees, open a draft
-            evaluation for a selected review cycle, and save ratings plus
-            narrative notes.
+            evaluation for a selected review cycle, save ratings plus
+            narrative notes, and review a simple 9-box matrix.
           </p>
         </article>
 

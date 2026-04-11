@@ -24,6 +24,9 @@ def test_manager_can_create_evaluation_for_report(db_session, domain_context) ->
     assert response.employee_id == domain_context.peer_employee.id
     assert response.review_cycle_id == domain_context.active_review_cycle.id
     assert response.performance_rating == 3.45
+    assert response.performance_tier == "effective"
+    assert response.potential_tier == "moderate"
+    assert response.nine_box_label == "Contributor"
     assert response.status == "draft"
 
 

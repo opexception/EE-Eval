@@ -11,6 +11,9 @@ class EvaluationCreateRequest(BaseModel):
     performance_rating: Decimal = Field(ge=0, le=5)
     potential_rating: int = Field(ge=1, le=3)
     summary_comment: str | None = Field(default=None, max_length=4000)
+    manager_rationale: str | None = Field(default=None, max_length=4000)
+    promotion_recommendation: str | None = Field(default=None, max_length=40)
+    promotion_rationale: str | None = Field(default=None, max_length=4000)
     status: str = Field(min_length=1, max_length=40)
 
 
@@ -18,6 +21,9 @@ class EvaluationUpdateRequest(BaseModel):
     performance_rating: Decimal | None = Field(default=None, ge=0, le=5)
     potential_rating: int | None = Field(default=None, ge=1, le=3)
     summary_comment: str | None = Field(default=None, max_length=4000)
+    manager_rationale: str | None = Field(default=None, max_length=4000)
+    promotion_recommendation: str | None = Field(default=None, max_length=40)
+    promotion_rationale: str | None = Field(default=None, max_length=4000)
     status: str | None = Field(default=None, min_length=1, max_length=40)
 
 
@@ -31,11 +37,23 @@ class EvaluationResponse(BaseModel):
     updated_by_user_id: int
     performance_rating: float
     potential_rating: int
+    performance_tier: str
+    potential_tier: str
+    nine_box_code: str
+    nine_box_label: str
     summary_comment: str | None
+    sensitive_fields_visible: bool
+    manager_rationale: str | None
+    promotion_recommendation: str | None
+    promotion_rationale: str | None
     status: str
 
     @classmethod
-    def from_evaluation(cls, evaluation: Evaluation) -> "EvaluationResponse":
+    def from_evaluation(
+        cls,
+        evaluation: Evaluation,
+        include_sensitive_fields: bool = False,
+    ) -> "EvaluationResponse":
         return cls(
             id=evaluation.id,
             employee_id=evaluation.employee_id,
@@ -46,6 +64,20 @@ class EvaluationResponse(BaseModel):
             updated_by_user_id=evaluation.updated_by_user_id,
             performance_rating=float(evaluation.performance_rating),
             potential_rating=evaluation.potential_rating,
+            performance_tier=evaluation.performance_tier,
+            potential_tier=evaluation.potential_tier,
+            nine_box_code=evaluation.nine_box_code,
+            nine_box_label=evaluation.nine_box_label,
             summary_comment=evaluation.summary_comment,
+            sensitive_fields_visible=include_sensitive_fields,
+            manager_rationale=(
+                evaluation.manager_rationale if include_sensitive_fields else None
+            ),
+            promotion_recommendation=(
+                evaluation.promotion_recommendation if include_sensitive_fields else None
+            ),
+            promotion_rationale=(
+                evaluation.promotion_rationale if include_sensitive_fields else None
+            ),
             status=evaluation.status,
         )

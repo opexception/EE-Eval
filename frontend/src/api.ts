@@ -52,8 +52,50 @@ export interface Evaluation {
   updated_by_user_id: number;
   performance_rating: number;
   potential_rating: number;
+  performance_tier: string;
+  potential_tier: string;
+  nine_box_code: string;
+  nine_box_label: string;
   summary_comment: string | null;
   status: string;
+}
+
+export interface NineBoxEmployee {
+  employee_id: number;
+  employee_number: string;
+  employee_name: string;
+  job_title: string;
+  department: string;
+  manager_name: string | null;
+  is_active: boolean;
+  evaluation_id: number;
+  performance_rating: number;
+  potential_rating: number;
+  performance_tier: string;
+  potential_tier: string;
+  nine_box_code: string;
+  nine_box_label: string;
+  summary_comment: string | null;
+  evaluation_status: string;
+}
+
+export interface NineBoxCell {
+  box_code: string;
+  box_label: string;
+  performance_tier: string;
+  performance_label: string;
+  potential_tier: string;
+  potential_label: string;
+  employee_count: number;
+  employees: NineBoxEmployee[];
+}
+
+export interface NineBoxMatrix {
+  review_cycle_id: number;
+  review_cycle_name: string;
+  review_cycle_status: string;
+  total_employees: number;
+  cells: NineBoxCell[];
 }
 
 export interface EvaluationSaveRequest {
@@ -171,6 +213,19 @@ export function getEvaluations(
   });
 
   return requestJson<Evaluation[]>(`/evaluations${query}`, {
+    headers: createAuthHeaders(token),
+  });
+}
+
+export function getNineBoxMatrix(
+  token: string,
+  options?: { reviewCycleId?: number },
+): Promise<NineBoxMatrix> {
+  const query = buildQuery({
+    review_cycle_id: options?.reviewCycleId,
+  });
+
+  return requestJson<NineBoxMatrix>(`/nine-box${query}`, {
     headers: createAuthHeaders(token),
   });
 }

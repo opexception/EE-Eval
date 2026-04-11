@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.deps import DatabaseSessionDep, EvaluationServiceDep
 from app.api.errors import to_http_exception
 from app.auth.deps import CurrentUserDep
+from app.schemas.audit import AuditEntryResponse
 from app.schemas.evaluation import (
     EvaluationCreateRequest,
     EvaluationResponse,
@@ -49,6 +50,27 @@ def create_evaluation(
 ) -> EvaluationResponse:
     try:
         return service.create_evaluation(session, current_user, payload)
+    except ServiceError as exc:
+        raise to_http_exception(exc) from exc
+
+
+@router.get(
+    "/{evaluation_id}/audit-events",
+    response_model=list[AuditEntryResponse],
+    summary="List audit events for an evaluation",
+)
+def list_evaluation_audit_events(
+    evaluation_id: int,
+    current_user: CurrentUserDep,
+    session: DatabaseSessionDep,
+    service: EvaluationServiceDep,
+) -> list[AuditEntryResponse]:
+    try:
+        return service.list_evaluation_audit_entries(
+            session,
+            current_user,
+            evaluation_id,
+        )
     except ServiceError as exc:
         raise to_http_exception(exc) from exc
 

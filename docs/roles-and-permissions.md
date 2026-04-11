@@ -235,3 +235,22 @@ As of the first end-to-end manager workflow pass:
 - managers open or continue a draft evaluation inside the currently selected review cycle, with the active cycle used as the default frontend choice
 - the first draft workflow captures performance rating, potential rating, and one narrative note field
 - publish, approval, calibration, and field-level narrative visibility rules are still deferred to later workflow phases
+
+As of the first 9-box slice:
+
+- backend 9-box access follows the same server-side visibility rules as evaluation access
+- HR administrators can view the organization-wide matrix, and managers or upper managers can view matrix placements for employees in their reporting chain
+- people managers and upper managers do not see their own employee record in the team matrix view
+- the current frontend matrix supports drill-down from a cell to employee detail using already-authorized summary fields
+- only employees with a saved evaluation in the selected review cycle appear in the current matrix
+- the current performance axis uses the saved evaluation rating for that selected cycle, not yet a rolling 3-year average
+
+As of the first audit-and-sensitive-fields slice:
+
+- evaluation records now support `manager_rationale`, `promotion_recommendation`, and `promotion_rationale` as sensitive backend fields
+- HR administrators can view and edit these sensitive evaluation fields across the organization
+- people managers can view and edit these sensitive fields only for evaluations they are allowed to manage
+- upper managers and executives can still view evaluation summaries in their allowed scope, but these new sensitive fields are redacted from API responses
+- evaluation audit history is stored server-side for create, update, and archive actions with actor and timestamp information
+- the first audit-history view is intentionally narrower than general evaluation visibility and is limited to HR administrators plus in-scope people managers
+- audit entries record changed field names and safe summary metadata, but they do not store sensitive narrative text or promotion values verbatim

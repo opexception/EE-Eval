@@ -21,9 +21,159 @@ function createMockResponse({
   } as Response;
 }
 
+function createEvaluationResponse(overrides?: Record<string, unknown>) {
+  return {
+    id: 501,
+    employee_id: 1300,
+    employee_name: "Taylor Brooks",
+    review_cycle_id: 2026,
+    review_cycle_name: "2026 Annual Review",
+    author_user_id: 2,
+    updated_by_user_id: 2,
+    performance_rating: 3.7,
+    potential_rating: 2,
+    performance_tier: "high",
+    potential_tier: "moderate",
+    nine_box_code: "moderate_potential_high_performance",
+    nine_box_label: "Anchor",
+    summary_comment: "Taylor is trending upward and taking on more mentoring work.",
+    status: "draft",
+    ...overrides,
+  };
+}
+
+function createNineBoxMatrixBody(options?: {
+  employees?: unknown[];
+  boxCode?: string;
+}) {
+  const employees = options?.employees ?? [
+    {
+      employee_id: 1300,
+      employee_number: "EMP-1300",
+      employee_name: "Taylor Brooks",
+      job_title: "Senior Software Engineer",
+      department: "Product Engineering",
+      manager_name: "Avery Jordan",
+      is_active: true,
+      evaluation_id: 501,
+      performance_rating: 3.7,
+      potential_rating: 2,
+      performance_tier: "high",
+      potential_tier: "moderate",
+      nine_box_code: "moderate_potential_high_performance",
+      nine_box_label: "Anchor",
+      summary_comment: "Taylor is trending upward and taking on more mentoring work.",
+      evaluation_status: "draft",
+    },
+  ];
+  const boxCode =
+    options?.boxCode ?? "moderate_potential_high_performance";
+
+  return {
+    review_cycle_id: 2026,
+    review_cycle_name: "2026 Annual Review",
+    review_cycle_status: "active",
+    total_employees: employees.length,
+    cells: [
+      {
+        box_code: "high_potential_at_risk_performance",
+        box_label: "Misplaced",
+        performance_tier: "at_risk",
+        performance_label: "At-Risk Performance",
+        potential_tier: "high",
+        potential_label: "High Potential",
+        employee_count: 0,
+        employees: [],
+      },
+      {
+        box_code: "high_potential_effective_performance",
+        box_label: "Emerging",
+        performance_tier: "effective",
+        performance_label: "Effective Performance",
+        potential_tier: "high",
+        potential_label: "High Potential",
+        employee_count: 0,
+        employees: [],
+      },
+      {
+        box_code: "high_potential_high_performance",
+        box_label: "Accelerator",
+        performance_tier: "high",
+        performance_label: "High Performance",
+        potential_tier: "high",
+        potential_label: "High Potential",
+        employee_count: boxCode === "high_potential_high_performance" ? employees.length : 0,
+        employees: boxCode === "high_potential_high_performance" ? employees : [],
+      },
+      {
+        box_code: "moderate_potential_at_risk_performance",
+        box_label: "Unstable",
+        performance_tier: "at_risk",
+        performance_label: "At-Risk Performance",
+        potential_tier: "moderate",
+        potential_label: "Moderate Potential",
+        employee_count: 0,
+        employees: [],
+      },
+      {
+        box_code: "moderate_potential_effective_performance",
+        box_label: "Contributor",
+        performance_tier: "effective",
+        performance_label: "Effective Performance",
+        potential_tier: "moderate",
+        potential_label: "Moderate Potential",
+        employee_count:
+          boxCode === "moderate_potential_effective_performance" ? employees.length : 0,
+        employees: boxCode === "moderate_potential_effective_performance" ? employees : [],
+      },
+      {
+        box_code: "moderate_potential_high_performance",
+        box_label: "Anchor",
+        performance_tier: "high",
+        performance_label: "High Performance",
+        potential_tier: "moderate",
+        potential_label: "Moderate Potential",
+        employee_count: boxCode === "moderate_potential_high_performance" ? employees.length : 0,
+        employees: boxCode === "moderate_potential_high_performance" ? employees : [],
+      },
+      {
+        box_code: "limited_potential_at_risk_performance",
+        box_label: "Strained",
+        performance_tier: "at_risk",
+        performance_label: "At-Risk Performance",
+        potential_tier: "limited",
+        potential_label: "Limited Potential",
+        employee_count: 0,
+        employees: [],
+      },
+      {
+        box_code: "limited_potential_effective_performance",
+        box_label: "Dependable",
+        performance_tier: "effective",
+        performance_label: "Effective Performance",
+        potential_tier: "limited",
+        potential_label: "Limited Potential",
+        employee_count: 0,
+        employees: [],
+      },
+      {
+        box_code: "limited_potential_high_performance",
+        box_label: "Expert",
+        performance_tier: "high",
+        performance_label: "High Performance",
+        potential_tier: "limited",
+        potential_label: "Limited Potential",
+        employee_count: 0,
+        employees: [],
+      },
+    ],
+  };
+}
+
 function installManagerWorkflowFetchMock(options?: {
   evaluations?: unknown[];
   postEvaluationBody?: unknown;
+  nineBoxMatrixBody?: unknown;
 }) {
   const employees = [
     {
@@ -55,22 +205,37 @@ function installManagerWorkflowFetchMock(options?: {
 
   let evaluations =
     options?.evaluations ??
-    [
-      {
-        id: 501,
-        employee_id: 1300,
-        employee_name: "Taylor Brooks",
-        review_cycle_id: 2026,
-        review_cycle_name: "2026 Annual Review",
-        author_user_id: 2,
-        updated_by_user_id: 2,
-        performance_rating: 3.7,
-        potential_rating: 2,
-        summary_comment:
-          "Taylor is trending upward and taking on more mentoring work.",
-        status: "draft",
-      },
-    ];
+    [createEvaluationResponse()];
+
+  const nineBoxMatrixBody =
+    options?.nineBoxMatrixBody ??
+    createNineBoxMatrixBody({
+      employees:
+        evaluations.length > 0
+          ? [
+              {
+                employee_id: 1300,
+                employee_number: "EMP-1300",
+                employee_name: "Taylor Brooks",
+                job_title: "Senior Software Engineer",
+                department: "Product Engineering",
+                manager_name: "Avery Jordan",
+                is_active: true,
+                evaluation_id: 501,
+                performance_rating: 3.7,
+                potential_rating: 2,
+                performance_tier: "high",
+                potential_tier: "moderate",
+                nine_box_code: "moderate_potential_high_performance",
+                nine_box_label: "Anchor",
+                summary_comment:
+                  "Taylor is trending upward and taking on more mentoring work.",
+                evaluation_status: "draft",
+              },
+            ]
+          : [],
+      boxCode: "moderate_potential_high_performance",
+    });
 
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
@@ -111,40 +276,39 @@ function installManagerWorkflowFetchMock(options?: {
       return createMockResponse({ body: evaluations });
     }
 
+    if (url.includes("/nine-box?review_cycle_id=2026") && method === "GET") {
+      return createMockResponse({ body: nineBoxMatrixBody });
+    }
+
     if (url.endsWith("/evaluations") && method === "POST") {
       const body = JSON.parse(String(init?.body));
-      const createdEvaluation = options?.postEvaluationBody ?? {
+      const createdEvaluation = options?.postEvaluationBody ?? createEvaluationResponse({
         id: 777,
-        employee_id: body.employee_id,
-        employee_name: "Taylor Brooks",
-        review_cycle_id: body.review_cycle_id,
-        review_cycle_name: "2026 Annual Review",
-        author_user_id: 2,
-        updated_by_user_id: 2,
         performance_rating: body.performance_rating,
         potential_rating: body.potential_rating,
+        performance_tier: "high",
+        potential_tier: "high",
+        nine_box_code: "high_potential_high_performance",
+        nine_box_label: "Accelerator",
         summary_comment: body.summary_comment,
         status: body.status,
-      };
+      });
       evaluations = [createdEvaluation];
       return createMockResponse({ body: createdEvaluation });
     }
 
     if (url.endsWith("/evaluations/501") && method === "PUT") {
       const body = JSON.parse(String(init?.body));
-      const updatedEvaluation = {
-        id: 501,
-        employee_id: 1300,
-        employee_name: "Taylor Brooks",
-        review_cycle_id: 2026,
-        review_cycle_name: "2026 Annual Review",
-        author_user_id: 2,
-        updated_by_user_id: 2,
+      const updatedEvaluation = createEvaluationResponse({
         performance_rating: body.performance_rating,
         potential_rating: body.potential_rating,
+        performance_tier: "high",
+        potential_tier: "moderate",
+        nine_box_code: "moderate_potential_high_performance",
+        nine_box_label: "Anchor",
         summary_comment: body.summary_comment,
         status: body.status,
-      };
+      });
       evaluations = [updatedEvaluation];
       return createMockResponse({ body: updatedEvaluation });
     }
@@ -201,10 +365,28 @@ describe("App", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Current working cycle")).toBeInTheDocument();
+    expect(screen.getByText("9-box matrix")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Anchor/i })).toBeInTheDocument();
+  });
+
+  it("allows drill-down from a 9-box cell to employee detail", async () => {
+    installManagerWorkflowFetchMock();
+
+    render(<App />);
+    await signInAsManager();
+
+    fireEvent.click(screen.getByRole("button", { name: /Anchor/i }));
+
+    expect(await screen.findByText("Employee detail")).toBeInTheDocument();
+    expect(screen.getAllByText("Taylor Brooks").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Manager: Avery Jordan/i)).toBeInTheDocument();
   });
 
   it("creates a new draft evaluation for a selected report", async () => {
-    const fetchMock = installManagerWorkflowFetchMock({ evaluations: [] });
+    const fetchMock = installManagerWorkflowFetchMock({
+      evaluations: [],
+      nineBoxMatrixBody: createNineBoxMatrixBody({ employees: [] }),
+    });
 
     render(<App />);
     await signInAsManager();

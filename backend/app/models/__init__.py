@@ -1,3 +1,4 @@
+from app.models.audit_entry import AuditAction, AuditEntry
 from app.models.base import Base
 from app.models.demo_record import DemoRecord
 from app.models.employee import Employee
@@ -8,6 +9,8 @@ from app.models.user import AuthProvider, User
 from app.models.user_role import UserRole
 
 __all__ = [
+    "AuditAction",
+    "AuditEntry",
     "AuthProvider",
     "Base",
     "DemoRecord",

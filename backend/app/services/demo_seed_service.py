@@ -13,6 +13,7 @@ from app.models.review_cycle import ReviewCycle, ReviewCycleStatus, ReviewCycleT
 from app.models.role import Role, RoleName
 from app.models.user import AuthProvider, User
 from app.models.user_role import UserRole
+from app.services.nine_box_service import NineBoxService
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,9 @@ class DemoEvaluationSeed:
     performance_rating: Decimal
     potential_rating: int
     summary_comment: str
+    manager_rationale: str | None
+    promotion_recommendation: str | None
+    promotion_rationale: str | None
     status: EvaluationStatus
 
 
@@ -197,6 +201,13 @@ DEMO_EVALUATIONS: tuple[DemoEvaluationSeed, ...] = (
         summary_comment=(
             "Avery maintained strong delivery leadership and helped steady team planning during a busy year."
         ),
+        manager_rationale=(
+            "Avery balanced delivery accountability with steadier team planning and clearer escalation."
+        ),
+        promotion_recommendation="future_consideration",
+        promotion_rationale=(
+            "Avery is progressing well as a people leader, but broader cross-org scope should come first."
+        ),
         status=EvaluationStatus.SUBMITTED,
     ),
     DemoEvaluationSeed(
@@ -207,6 +218,13 @@ DEMO_EVALUATIONS: tuple[DemoEvaluationSeed, ...] = (
         potential_rating=2,
         summary_comment=(
             "Taylor consistently delivered reliable work and showed stronger cross-team communication by year end."
+        ),
+        manager_rationale=(
+            "Taylor increased consistency across complex projects and needed less day-to-day direction late in the year."
+        ),
+        promotion_recommendation="future_consideration",
+        promotion_rationale=(
+            "Taylor is trending toward broader ownership, but the recommendation is still developmental rather than immediate."
         ),
         status=EvaluationStatus.SUBMITTED,
     ),
@@ -219,6 +237,13 @@ DEMO_EVALUATIONS: tuple[DemoEvaluationSeed, ...] = (
         summary_comment=(
             "Taylor is tracking above expectations early in the cycle and is taking on more mentoring work."
         ),
+        manager_rationale=(
+            "Taylor is showing stronger technical leadership, especially in design reviews and teammate coaching."
+        ),
+        promotion_recommendation="recommended_now",
+        promotion_rationale=(
+            "Taylor is already operating at a broader scope and is sustaining the behaviors expected for the next level."
+        ),
         status=EvaluationStatus.DRAFT,
     ),
     DemoEvaluationSeed(
@@ -230,14 +255,26 @@ DEMO_EVALUATIONS: tuple[DemoEvaluationSeed, ...] = (
         summary_comment=(
             "Jordan is building confidence in stakeholder facilitation and has kept design work well organized."
         ),
+        manager_rationale=(
+            "Jordan is reliable in current scope and is improving influence with cross-functional partners."
+        ),
+        promotion_recommendation="not_recommended",
+        promotion_rationale=(
+            "Jordan is still strengthening facilitation skills before a promotion recommendation would be appropriate."
+        ),
         status=EvaluationStatus.DRAFT,
     ),
 )
 
 
 class DemoSeedService:
-    def __init__(self, password_service: PasswordService | None = None) -> None:
+    def __init__(
+        self,
+        password_service: PasswordService | None = None,
+        nine_box_service: NineBoxService | None = None,
+    ) -> None:
         self.password_service = password_service or PasswordService()
+        self.nine_box_service = nine_box_service or NineBoxService()
 
     def seed(self, session: Session) -> DemoSeedResult:
         settings = get_settings()
@@ -431,6 +468,10 @@ class DemoSeedService:
             employee = employees_by_number[demo_evaluation.employee_number]
             review_cycle = review_cycles_by_name[demo_evaluation.review_cycle_name]
             author = users_by_username[demo_evaluation.author_username]
+            snapshot = self.nine_box_service.build_snapshot(
+                demo_evaluation.performance_rating,
+                demo_evaluation.potential_rating,
+            )
             statement = select(Evaluation).where(
                 Evaluation.employee_id == employee.id,
                 Evaluation.review_cycle_id == review_cycle.id,
@@ -444,7 +485,14 @@ class DemoSeedService:
                     updated_by_user_id=author.id,
                     performance_rating=demo_evaluation.performance_rating,
                     potential_rating=demo_evaluation.potential_rating,
+                    performance_tier=snapshot.performance_tier,
+                    potential_tier=snapshot.potential_tier,
+                    nine_box_code=snapshot.nine_box_code,
+                    nine_box_label=snapshot.nine_box_label,
                     summary_comment=demo_evaluation.summary_comment,
+                    manager_rationale=demo_evaluation.manager_rationale,
+                    promotion_recommendation=demo_evaluation.promotion_recommendation,
+                    promotion_rationale=demo_evaluation.promotion_rationale,
                     status=demo_evaluation.status.value,
                 )
                 session.add(evaluation)
@@ -455,6 +503,13 @@ class DemoSeedService:
             evaluation.updated_by_user_id = author.id
             evaluation.performance_rating = demo_evaluation.performance_rating
             evaluation.potential_rating = demo_evaluation.potential_rating
+            evaluation.performance_tier = snapshot.performance_tier
+            evaluation.potential_tier = snapshot.potential_tier
+            evaluation.nine_box_code = snapshot.nine_box_code
+            evaluation.nine_box_label = snapshot.nine_box_label
             evaluation.summary_comment = demo_evaluation.summary_comment
+            evaluation.manager_rationale = demo_evaluation.manager_rationale
+            evaluation.promotion_recommendation = demo_evaluation.promotion_recommendation
+            evaluation.promotion_rationale = demo_evaluation.promotion_rationale
             evaluation.status = demo_evaluation.status.value
             session.add(evaluation)

@@ -122,6 +122,10 @@ Current conservative assumptions:
 - employees can read their own employee profile, but they do not receive evaluation-record access yet
 - executives are read-only in this slice and the evaluation fields are intentionally limited to summary-safe values
 - system administrators do not automatically gain access to employee or evaluation records
+- newly added sensitive evaluation fields are redacted unless the caller is HR or a people manager with active edit scope for that evaluation
+- the first audit trail covers evaluation create, update, and archive actions only
+- audit entries store actor, timestamp, action, and changed-field metadata, but intentionally do not store sensitive narrative text or promotion values verbatim
+- evaluation audit-history access is currently narrower than ordinary evaluation read access and excludes executives and upper managers in this first pass
 
 ---
 
